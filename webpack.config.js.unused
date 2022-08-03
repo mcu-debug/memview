@@ -1,4 +1,45 @@
 //@ts-check
+const path = require("path");
+
+module.exports = {
+  entry: {
+    hexview: "./src/view/hexview/index.tsx"
+  },
+  output: {
+    path: path.resolve(__dirname, "dist", "hexview"),
+    filename: "[name].js"
+  },
+  devtool: "eval-source-map",
+  resolve: {
+    extensions: [".js", ".ts", ".tsx", ".json"]
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        loader: "ts-loader",
+        options: {}
+      },
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: "style-loader"
+          },
+          {
+            loader: "css-loader"
+          }
+        ]
+      }
+    ]
+  },
+  performance: {
+    hints: false
+  }
+};
+
+
+if (false) {
 
 'use strict';
 
@@ -46,3 +87,4 @@ const extensionConfig = {
   },
 };
 module.exports = [ extensionConfig ];
+}
