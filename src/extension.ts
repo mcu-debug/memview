@@ -9,7 +9,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand("memview.helloWorld", () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
-		vscode.window.showInformationMessage("Hello World from memview!");
+		// vscode.window.showInformationMessage("Hello World from memview!");
 		const blah = new HexViewLoader(undefined, context);
 	});
 

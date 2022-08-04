@@ -12,7 +12,7 @@ declare global {
 }
 
 const vscode = window.acquireVsCodeApi();
-const bytes = new Uint8Array(256);
+const bytes = new Uint8Array(2*1024);
 for (let ix = 0; ix < bytes.length; ix++) {
   bytes[ix] = Math.floor(Math.random() * 255) & 0xff;
 }

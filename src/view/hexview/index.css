@@ -19,7 +19,6 @@
 }
 
 .hex-cell-value {
-	paddingx: 0 calc(var(--cell-size) / 4);
 	user-select: text;
 	display: inline-flex;
   width: 3ch;
@@ -35,7 +34,6 @@
 .hex-cell-char {
   color: var(--vscode-textLink-activeForeground);
   background-color: var(--vscode-textBlockQuote-background);
-	displayx: inline-flex;
   width: 2ch;
 }
 

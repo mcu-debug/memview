@@ -4,7 +4,6 @@ import * as React from "react";
 type OnCellChangeFunc = (address: bigint, val: number) => void
 interface IHexCell {
   vscode: any;
-  column: number;
   address: bigint;
   value: number;
   dirty: boolean;
@@ -45,7 +44,6 @@ export function HexCellValue(props: IHexCell): JSX.Element {
     <span
       id={id}
       className={classNames}
-      grid-column={props.column}
       contentEditable="true"
       onChange={onValueChanged}
     >
@@ -61,7 +59,7 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
   const id = `hex-cell-address-${address}`;
   const valueStr = address.toString(16).padStart(16, "0");
   return (
-    < span id={id} className={classNames} grid-column="1">
+    < span id={id} className={classNames}>
       {valueStr}
     </span>
   );
@@ -70,44 +68,39 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
 export const HexCellChar: React.FunctionComponent<{
   address: bigint;
   val: number;
-  column: number;
-}> = ({ address, val, column }) => {
+}> = ({ address, val }) => {
   const classNames = "hex-cell hex-cell-char";
   const id = `hex-cell-char-${address}`;
   const valueStr = charCodesLookup[(val >>> 0) & 0xff];
   return (
-    < span id={id} className={classNames} grid-column={column}>
+    < span id={id} className={classNames}>
       {valueStr}
     </ span>
   );
 };
 
 export const HexCellEmpty: React.FunctionComponent<{
-  column: number;
   length: number;
-}> = ({ column, length = 1 }) => {
-  const classNames = "hex-cell hex-cell-header";
+}> = ({ length = 1 }) => {
+  const classNames = "hex-cell";
   const valueStr = " ".repeat(length);
   return (
-    < span className={classNames} grid-column={column}>
+    < span className={classNames}>
       {valueStr}
     </ span>
   );
 };
 
 export const HexCellEmptyHeader: React.FunctionComponent<{
-  column: number;
   length?: number;
 	fillChar?: string;
   cls?: string
-}> = ({ column, length = 1, fillChar = " ", cls= "" }) => {
-  const classNames = `hex-cell hex-cell-char-header hex-cell-header ${cls}`;
+}> = ({ length = 1, fillChar = " ", cls= "" }) => {
+  const classNames = `hex-cell hex-cell-char-header ${cls}`;
   const valueStr = fillChar.repeat(length);
   return (
     < span
       className={classNames}
-      cell-type="columnheader"
-      grid-column={column}
     >
       {valueStr}
     </ span>
@@ -116,13 +109,12 @@ export const HexCellEmptyHeader: React.FunctionComponent<{
 
 export const HexCellValueHeader: React.FunctionComponent<{
   value: number;
-  column: number;
-}> = ({ value: val, column }) => {
-  const classNames = "hex-cell hex-cell-value-header hex-cell-header";
-  const id = `hex-cell-value-header-${val}`;
-  const valueStr = hexValuesLookup[(val >>> 0) & 0xff];
+}> = ({ value }) => {
+  const classNames = "hex-cell hex-cell-value-header";
+  const id = `hex-cell-value-header-${value}`;
+  const valueStr = hexValuesLookup[(value >>> 0) & 0xff];
   return (
-    < span id={id} className={classNames} grid-column={column} cell-type="columnheader">
+    < span id={id} className={classNames}>
       {valueStr}
     </ span>
   );
@@ -146,12 +138,12 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 	}
   return (
     <div className={classNames}>
-      <HexCellEmptyHeader key={1} column={1} length={16} cls={"hex-cell-address"} />
+      <HexCellEmptyHeader key={1} length={16} cls={"hex-cell-address"} />
       {ary.map((v, i) => {
-        return <HexCellValueHeader key={i + 2} column={i + 2} value={v}/>;
+        return <HexCellValueHeader key={i + 2} value={v}/>;
       })}
       {decodedText.map((v, i) => {
-        return <HexCellEmptyHeader key={i + 18} column={i + 18} fillChar={v} />;
+        return <HexCellEmptyHeader key={i + 18} fillChar={v} />;
       })}
     </div>
   );
@@ -178,7 +170,6 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
       <HexCellValue
         key={ix + 2}
         vscode={props.vscode}
-        column={ix + 2}
         address={props.address + ixx}
         value={val}
         dirty={props.dirty}
@@ -186,7 +177,7 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
       />
     );
     chars.push(
-      <HexCellChar address={props.address + ixx} val={val} column={ix + 18} key={ix + 18}/>
+      <HexCellChar address={props.address + ixx} val={val} key={ix + 18}/>
     );
   }
   return (
