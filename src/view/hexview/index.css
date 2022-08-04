@@ -40,11 +40,13 @@
 .hex-header-row {
 	display: flex;
   font-weight: bold;
+  white-space: pre;
 }
 
 .hex-data-row {
 	display: flex;
   font-weight: bold;
+  white-space: pre;
 }
 
 .hex-cell-address {

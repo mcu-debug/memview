@@ -1,9 +1,18 @@
-declare const acquireVsCodeApi: any;
+// declare const acquireVsCodeApi: any;
+
+interface IVsCodeApi {
+	postMessage(msg: unknown): void;
+	getState(): any;
+	setState(value: any): void;
+}
+
+declare function acquireVsCodeApi(): IVsCodeApi;
 
 export interface IMyGlobals {
-    vscode: any
-    bytes: Uint8Array | undefined
+    vscode: IVsCodeApi;
+    bytes: Uint8Array | undefined;
 }
+
 export const myGlobals: IMyGlobals  = {
     vscode: acquireVsCodeApi(),
     bytes: undefined
