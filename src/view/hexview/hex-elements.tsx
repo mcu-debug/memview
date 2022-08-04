@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from "react";
+import { myGlobals } from "./globals";
 
 type OnCellChangeFunc = (address: bigint, val: number) => void
 interface IHexCell {
-  vscode: any;
   address: bigint;
   value: number;
   dirty: boolean;
@@ -149,9 +149,7 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 }
 
 interface IHexDataRow {
-  vscode: any;
   address: bigint;
-  bytes: Uint8Array;
   byteOffset: number;
   dirty: boolean;
   mask: number;
@@ -163,12 +161,11 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
   const values = [];
   const chars = [];
   for (let ix = 0; ix < 16; ix++) {
-    const val = props.mask & (1 << ix) ? props.bytes[props.byteOffset + ix] : -1;
+    const val = myGlobals.bytes && (props.mask & (1 << ix)) ? myGlobals.bytes[props.byteOffset + ix] : -1;
     const ixx = BigInt(ix);
     values.push(
       <HexCellValue
         key={ix + 2}
-        vscode={props.vscode}
         address={props.address + ixx}
         value={val}
         dirty={props.dirty}
@@ -191,9 +188,7 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
 }
 
 export interface IHexTable {
-  vscode: any;
   address: bigint; // Address of first byte ie. bytes[byteOffset];
-  bytes: Uint8Array;
   byteOffset: number;
   numBytes: number; // Must be a multiple of 16
   dirty: boolean;
@@ -214,9 +209,7 @@ export function HexTable(props: IHexTable): JSX.Element {
     rows.push(
       <HexDataRow
         key={offset}
-        vscode={props.vscode}
         address={addr}
-        bytes={props.bytes}
         byteOffset={offset}
         dirty={props.dirty}
         mask={0xffff}
