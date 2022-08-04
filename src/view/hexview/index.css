@@ -1,12 +1,23 @@
-li {
-    margin-bottom: 15px;
-  }
-  
-  input {
-    margin-left: 10px;
-  }
-  
-  .save {
-    margin-top: 10px;
-  }
-  
+.hex-grid {
+  gap: 0;
+  text-align: center;
+}
+
+.hex-cell {
+  margin: 0px;
+  padding: 0px;
+  border: 1px solid powderblue;
+  text-align: center;
+  white-space: pre;
+  font-family: var(--vscode-editor-font-family);
+  font-weight: var(--vscode-editor-font-weight);
+  font-size: var(--vscode-editor-font-size);
+}
+
+.hex-header-row {
+  font-weight: bold;
+}
+
+.hex-cell-address {
+	color: var(--vscode-editorLineNumber-activeForeground);
+}

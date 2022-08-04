@@ -22,9 +22,9 @@
     ]
   },
   "scripts": {
-    "compile": "tsc -noEmit && node .esbuild.config.js",
+    "compile": "tsc -noEmit && node .esbuild.config.js --analyze",
     "lint": "eslint src --ext ts",
-    "watch": "node .esbuild.config.js --watch",
+    "watch": "node .esbuild.config.js --watch --analyze",
     "test": "node ./src/test/runTest.js"
   },
   "devDependencies": {
@@ -45,6 +45,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "@vscode/debugprotocol": "^1.56.1",
     "@vscode/extension-telemetry": "0.5.2",
     "@vscode/webview-ui-toolkit": "^1.0.0",
     "react": "^17.0.2",

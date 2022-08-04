@@ -16,6 +16,11 @@ interface IHexCell {
   onChange?: OnCellChangeFunc
 }
 
+// const fz = 10;
+// const template = `${fz*16}px` + ` ${fz*2}px`.repeat(16) + ` ${fz*1}px`.repeat(16);
+const fz = 1;
+const template = `${fz*16}ch` + ` ${fz*2}ch`.repeat(16) + ` ${fz*1}ch`.repeat(16);
+
 export function HexCellValue(props: IHexCell): JSX.Element {
   const [value, setValue] = React.useState(props.value);
 
@@ -66,7 +71,7 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
   const id = `hex-cell-address-${address}`;
   const valueStr = address.toString(16).padStart(16, "0");
   return (
-    <VSCodeDataGridCell id={id} className={classNames} grid-column="0">
+    <VSCodeDataGridCell id={id} className={classNames} grid-column="1">
       {valueStr}
     </VSCodeDataGridCell>
   );
@@ -92,7 +97,7 @@ export const HexCellEmpty: React.FunctionComponent<{
   length: number;
 }> = ({ column, length = 1 }) => {
   const classNames = "hex-cell hex-cell-empty";
-  const valueStr = "&nbsp".repeat(length);
+  const valueStr = " ".repeat(length);
   return (
     <VSCodeDataGridCell className={classNames} grid-column={column}>
       {valueStr}
@@ -104,7 +109,7 @@ export const HexCellEmptyHeader: React.FunctionComponent<{
   column: number;
   length?: number;
 	fillChar?: string;
-}> = ({ column, length = 1, fillChar = "&nbsp" }) => {
+}> = ({ column, length = 1, fillChar = " " }) => {
   const classNames = "hex-cell hex-cell-empty";
   const valueStr = fillChar.repeat(length);
   return (
@@ -124,9 +129,9 @@ export const HexCellValueHeader: React.FunctionComponent<{
 }> = ({ value: val, column }) => {
   const classNames = "hex-cell hex-cell-value-header";
   const id = `hex-cell-value-header-${val}`;
-  const valueStr = charCodesLookup[(val >>> 0) & 0xff];
+  const valueStr = hexValuesLookup[(val >>> 0) & 0xff];
   return (
-    <VSCodeDataGridCell id={id} className={classNames} grid-column={column}>
+    <VSCodeDataGridCell id={id} className={classNames} grid-column={column} cell-type="columnheader">
       {valueStr}
     </VSCodeDataGridCell>
   );
@@ -146,16 +151,16 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 	}
 	const decodedText = "Decoded Bytes".split("");
 	for (let x = decodedText.length; x < 16; x++) {
-		decodedText.push("&nbsp");
+		decodedText.push(" ");
 	}
   return (
-    <VSCodeDataGridRow className={classNames}>
-      <HexCellEmptyHeader column={0} length={16} />
+    <VSCodeDataGridRow row-type="sticky-header" className={classNames}>
+      <HexCellEmptyHeader key={1} column={1} length={16} />
       {ary.map((v, i) => {
-        return <HexCellValueHeader value={v} column={i + 2} />;
+        return <HexCellValueHeader key={i + 2} column={i + 2} value={v}/>;
       })}
       {decodedText.map((v, i) => {
-        return <HexCellEmptyHeader column={i + 18} fillChar={v} />;
+        return <HexCellEmptyHeader key={i + 18} column={i + 18} fillChar={v} />;
       })}
     </VSCodeDataGridRow>
   );
@@ -172,14 +177,15 @@ interface IHexDataRow {
 }
 
 export function HexDataRow(props: IHexDataRow): JSX.Element {
-  const classNames = "hex-header-row";
+  const classNames = "hex-data-row";
   const values = [];
   const chars = [];
   for (let ix = 0; ix < 16; ix++) {
-    const val = props.mask & ix ? props.bytes[props.byteOffset + ix] : -1;
+    const val = props.mask & (1 << ix) ? props.bytes[props.byteOffset + ix] : -1;
     const ixx = BigInt(ix);
     values.push(
       <HexCellValue
+        key={ix + 2}
         vscode={props.vscode}
         column={ix + 2}
         address={props.address + ixx}
@@ -189,12 +195,12 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
       />
     );
     chars.push(
-      <HexCellChar address={props.address + ixx} val={val} column={ix + 18} />
+      <HexCellChar address={props.address + ixx} val={val} column={ix + 18} key={ix + 18}/>
     );
   }
   return (
     <VSCodeDataGridRow className={classNames}>
-      <HexCellAddress address={props.address} />
+      <HexCellAddress key={1} address={props.address} />
       {values}
       {chars}
     </VSCodeDataGridRow>
@@ -212,27 +218,29 @@ export interface IHexTable {
 }
 
 export function HexTable(props: IHexTable): JSX.Element {
-  props.numBytes = (props.numBytes / 16) * 16;
-  const endAddr = props.address + BigInt(props.numBytes);
-  const rows = [<HexHeaderRow address={props.address} />];
+  const numBytes = (props.numBytes / 16) * 16;
+  const endAddr = props.address + BigInt(numBytes);
+  const rows = [<HexHeaderRow key="h" address={props.address}/>];
+  let offset = props.byteOffset;
   for (
     let addr = props.address;
     addr < endAddr;
-    addr += 16n, props.byteOffset + 16
+    addr += 16n, offset += 16
   ) {
     rows.push(
       <HexDataRow
+        key={offset}
         vscode={props.vscode}
         address={addr}
         bytes={props.bytes}
-        byteOffset={props.byteOffset}
+        byteOffset={offset}
         dirty={props.dirty}
         mask={0xffff}
         onChange={props.onChange}
       />
     );
   }
-  return <VSCodeDataGrid>{rows}</VSCodeDataGrid>;
+  return <VSCodeDataGrid id="hex-grid" grid-template-columns={template}>{rows}</VSCodeDataGrid>;
 }
 
 const charCodesLookup: string[] = [];

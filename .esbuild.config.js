@@ -53,10 +53,10 @@ esbuild.build({
   bundle: true,
 	external: ['vscode'],
 	sourcemap: watch ? 'inline' : false,
-	minify,
+	// minify,
 	watch,
 	platform: 'browser',
-  outfile: 'dist/editor.js',
+  outfile: 'dist/memview.js',
 	plugins: [
 		// svgr(),
 		// linaria.default({ sourceMap: watch }),

@@ -2,10 +2,7 @@
 
 /node_modules/
 /build/
-/lib/
 /dist/
-/docs/
-.idea/*
 
 .DS_Store
 coverage

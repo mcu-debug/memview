@@ -22,7 +22,7 @@
       "@typescript-eslint/eslint-plugin"
     ],
     "rules": {
-      "quotes": ["error", "double"],
+      // "quotes": ["error", "double"],
       "semi": ["error", "always"],
       "no-console": "off",
       "no-var": 1,
