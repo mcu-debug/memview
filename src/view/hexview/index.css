@@ -53,3 +53,7 @@
 	color: var(--vscode-editorLineNumber-activeForeground);
   width: 18ch;
 }
+
+.hex-cell-address-empty {
+  visibility: hidden;
+}

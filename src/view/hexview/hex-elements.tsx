@@ -43,7 +43,7 @@ export function HexCellValue(props: IHexCell): JSX.Element {
   return (
     <span
       className={classNames}
-      contentEditable="true"
+      contentEditable={myGlobals.isReadonly}
       onChange={onValueChanged}
     >
       {valueStr}
@@ -56,7 +56,7 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
 }) => {
   const classNames = "hex-cell hex-cell-address";
   // const id = `hex-cell-address-${address}`;
-  const valueStr = address.toString(16).padStart(16, "0");
+  const valueStr = address.toString(16).padStart(16, "0").padEnd(18, " ");
   return (
     < span className={classNames}>
       {valueStr}
@@ -137,7 +137,7 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 	}
   return (
     <div className={classNames}>
-      <HexCellEmptyHeader key={1} length={16} cls={"hex-cell-address"} />
+      <HexCellEmptyHeader key={1} length={18} fillChar="." cls={"hex-cell-address hex-cell-address-empty"} />
       {ary.map((v, i) => {
         return <HexCellValueHeader key={i + 2} value={v}/>;
       })}

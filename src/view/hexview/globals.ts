@@ -11,9 +11,11 @@ declare function acquireVsCodeApi(): IVsCodeApi;
 export interface IMyGlobals {
     vscode: IVsCodeApi;
     bytes: Uint8Array | undefined;
+    isReadonly: boolean;
 }
 
 export const myGlobals: IMyGlobals  = {
     vscode: acquireVsCodeApi(),
-    bytes: undefined
+    bytes: undefined,
+    isReadonly: true
 };
