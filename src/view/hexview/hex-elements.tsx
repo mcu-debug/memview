@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from "react";
-import {
-  VSCodeDataGridCell,
-  VSCodeDataGridRow,
-  VSCodeDataGrid,
-} from "@vscode/webview-ui-toolkit/react";
 
 type OnCellChangeFunc = (address: bigint, val: number) => void
 interface IHexCell {
@@ -15,11 +10,6 @@ interface IHexCell {
   dirty: boolean;
   onChange?: OnCellChangeFunc
 }
-
-// const fz = 10;
-// const template = `${fz*16}px` + ` ${fz*2}px`.repeat(16) + ` ${fz*1}px`.repeat(16);
-const fz = 1;
-const template = `${fz*16}ch` + ` ${fz*2}ch`.repeat(16) + ` ${fz*1}ch`.repeat(16);
 
 export function HexCellValue(props: IHexCell): JSX.Element {
   const [value, setValue] = React.useState(props.value);
@@ -52,7 +42,7 @@ export function HexCellValue(props: IHexCell): JSX.Element {
 
   const valueStr = value < 0 ? "--" : hexValuesLookup[(value >>> 0) & 0xff];
   return (
-    <VSCodeDataGridCell
+    <span
       id={id}
       className={classNames}
       grid-column={props.column}
@@ -60,7 +50,7 @@ export function HexCellValue(props: IHexCell): JSX.Element {
       onChange={onValueChanged}
     >
       {valueStr}
-    </VSCodeDataGridCell>
+    </span>
   );
 }
 
@@ -71,9 +61,9 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
   const id = `hex-cell-address-${address}`;
   const valueStr = address.toString(16).padStart(16, "0");
   return (
-    <VSCodeDataGridCell id={id} className={classNames} grid-column="1">
+    < span id={id} className={classNames} grid-column="1">
       {valueStr}
-    </VSCodeDataGridCell>
+    </span>
   );
 };
 
@@ -86,9 +76,9 @@ export const HexCellChar: React.FunctionComponent<{
   const id = `hex-cell-char-${address}`;
   const valueStr = charCodesLookup[(val >>> 0) & 0xff];
   return (
-    <VSCodeDataGridCell id={id} className={classNames} grid-column={column}>
+    < span id={id} className={classNames} grid-column={column}>
       {valueStr}
-    </VSCodeDataGridCell>
+    </ span>
   );
 };
 
@@ -96,12 +86,12 @@ export const HexCellEmpty: React.FunctionComponent<{
   column: number;
   length: number;
 }> = ({ column, length = 1 }) => {
-  const classNames = "hex-cell hex-cell-empty";
+  const classNames = "hex-cell hex-cell-header";
   const valueStr = " ".repeat(length);
   return (
-    <VSCodeDataGridCell className={classNames} grid-column={column}>
+    < span className={classNames} grid-column={column}>
       {valueStr}
-    </VSCodeDataGridCell>
+    </ span>
   );
 };
 
@@ -109,17 +99,18 @@ export const HexCellEmptyHeader: React.FunctionComponent<{
   column: number;
   length?: number;
 	fillChar?: string;
-}> = ({ column, length = 1, fillChar = " " }) => {
-  const classNames = "hex-cell hex-cell-empty";
+  cls?: string
+}> = ({ column, length = 1, fillChar = " ", cls= "" }) => {
+  const classNames = `hex-cell hex-cell-char-header hex-cell-header ${cls}`;
   const valueStr = fillChar.repeat(length);
   return (
-    <VSCodeDataGridCell
+    < span
       className={classNames}
       cell-type="columnheader"
       grid-column={column}
     >
       {valueStr}
-    </VSCodeDataGridCell>
+    </ span>
   );
 };
 
@@ -127,13 +118,13 @@ export const HexCellValueHeader: React.FunctionComponent<{
   value: number;
   column: number;
 }> = ({ value: val, column }) => {
-  const classNames = "hex-cell hex-cell-value-header";
+  const classNames = "hex-cell hex-cell-value-header hex-cell-header";
   const id = `hex-cell-value-header-${val}`;
   const valueStr = hexValuesLookup[(val >>> 0) & 0xff];
   return (
-    <VSCodeDataGridCell id={id} className={classNames} grid-column={column} cell-type="columnheader">
+    < span id={id} className={classNames} grid-column={column} cell-type="columnheader">
       {valueStr}
-    </VSCodeDataGridCell>
+    </ span>
   );
 };
 
@@ -154,15 +145,15 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 		decodedText.push(" ");
 	}
   return (
-    <VSCodeDataGridRow row-type="sticky-header" className={classNames}>
-      <HexCellEmptyHeader key={1} column={1} length={16} />
+    <div className={classNames}>
+      <HexCellEmptyHeader key={1} column={1} length={16} cls={"hex-cell-address"} />
       {ary.map((v, i) => {
         return <HexCellValueHeader key={i + 2} column={i + 2} value={v}/>;
       })}
       {decodedText.map((v, i) => {
         return <HexCellEmptyHeader key={i + 18} column={i + 18} fillChar={v} />;
       })}
-    </VSCodeDataGridRow>
+    </div>
   );
 }
 
@@ -199,11 +190,13 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
     );
   }
   return (
-    <VSCodeDataGridRow className={classNames}>
+    <div className={classNames}>
       <HexCellAddress key={1} address={props.address} />
-      {values}
-      {chars}
-    </VSCodeDataGridRow>
+      <div>
+        {values}
+        {chars}
+      </div>
+    </div>
   );
 }
 
@@ -240,7 +233,7 @@ export function HexTable(props: IHexTable): JSX.Element {
       />
     );
   }
-  return <VSCodeDataGrid id="hex-grid" grid-template-columns={template}>{rows}</VSCodeDataGrid>;
+  return <div id="hex-grid" className="hex-grid" >{rows}</div>;
 }
 
 const charCodesLookup: string[] = [];

@@ -1,23 +1,55 @@
-.hex-grid {
-  gap: 0;
-  text-align: center;
-}
 
 .hex-cell {
   margin: 0px;
-  padding: 0px;
-  border: 1px solid powderblue;
+	padding: 0 calc(var(--cell-size) / 4);
   text-align: center;
   white-space: pre;
   font-family: var(--vscode-editor-font-family);
   font-weight: var(--vscode-editor-font-weight);
   font-size: var(--vscode-editor-font-size);
+	display: inline-flex;
+  line-height: 2.5ch;
+}
+
+.hex-cell-value-header {
+  color: var(--vscode-symbolIcon-classForeground);
+  font-weight: bold;
+	display: flex;
+  width: 3ch
+}
+
+.hex-cell-value {
+	paddingx: 0 calc(var(--cell-size) / 4);
+	user-select: text;
+	display: inline-flex;
+  width: 3ch;
+}
+
+.hex-cell-char-header {
+  color: var(--vscode-symbolIcon-classForeground);
+  font-weight: bold;
+	display: flex;
+  width: 2ch
+}
+
+.hex-cell-char {
+  color: var(--vscode-textLink-activeForeground);
+  background-color: var(--vscode-textBlockQuote-background);
+	displayx: inline-flex;
+  width: 2ch;
 }
 
 .hex-header-row {
+	display: flex;
+  font-weight: bold;
+}
+
+.hex-data-row {
+	display: flex;
   font-weight: bold;
 }
 
 .hex-cell-address {
 	color: var(--vscode-editorLineNumber-activeForeground);
+  width: 18ch;
 }

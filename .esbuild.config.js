@@ -1,9 +1,10 @@
-const esbuild = require('esbuild');
 // const svgr = require('esbuild-plugin-svgr');
 // const linaria = require('@linaria/esbuild');
+const esbuild = require('esbuild');
 
 const watch = process.argv.includes('--watch');
 const minify = !watch || process.argv.includes('--minify');
+const prod = process.env.NODE_ENV === 'production';
 
 // Build the editor provider
 esbuild.build({
@@ -12,7 +13,7 @@ esbuild.build({
   bundle: true,
 	external: ['vscode'],
 	sourcemap: watch,
-	minify,
+	minify: prod,
 	watch,
 	platform: 'node',
   outfile: 'dist/extension.js',
@@ -53,12 +54,14 @@ esbuild.build({
   bundle: true,
 	external: ['vscode'],
 	sourcemap: watch ? 'inline' : false,
-	// minify,
+	minify: prod,
 	watch,
 	platform: 'browser',
   outfile: 'dist/memview.js',
 	plugins: [
 		// svgr(),
-		// linaria.default({ sourceMap: watch }),
+		// linaria.default({
+        //     sourceMap: prod
+        // }),
 	],
 }).catch(() => process.exit(1))
