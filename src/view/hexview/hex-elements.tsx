@@ -17,7 +17,7 @@ export function HexCellValue(props: IHexCell): JSX.Element {
     "hex-cell hex-cell-value" +
     (props.dirty ? " hex-cell-value-dirty" : "") +
     (props.value !== value ? " hex-cell-value-changed" : "");
-  const id = `hex-cell-value-${props.address}`;
+  // const id = `hex-cell-value-${props.address}`;
 
   const onValueChanged = (event: any) => {
     let val = (event.target.value as string).trim().toLowerCase();
@@ -42,7 +42,6 @@ export function HexCellValue(props: IHexCell): JSX.Element {
   const valueStr = value < 0 ? "--" : hexValuesLookup[(value >>> 0) & 0xff];
   return (
     <span
-      id={id}
       className={classNames}
       contentEditable="true"
       onChange={onValueChanged}
@@ -56,10 +55,10 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
   address,
 }) => {
   const classNames = "hex-cell hex-cell-address";
-  const id = `hex-cell-address-${address}`;
+  // const id = `hex-cell-address-${address}`;
   const valueStr = address.toString(16).padStart(16, "0");
   return (
-    < span id={id} className={classNames}>
+    < span className={classNames}>
       {valueStr}
     </span>
   );
@@ -68,12 +67,12 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({
 export const HexCellChar: React.FunctionComponent<{
   address: bigint;
   val: number;
-}> = ({ address, val }) => {
+}> = ({ val }) => {
   const classNames = "hex-cell hex-cell-char";
-  const id = `hex-cell-char-${address}`;
+  // const id = `hex-cell-char-${address}`;
   const valueStr = charCodesLookup[(val >>> 0) & 0xff];
   return (
-    < span id={id} className={classNames}>
+    < span className={classNames}>
       {valueStr}
     </ span>
   );
@@ -111,10 +110,10 @@ export const HexCellValueHeader: React.FunctionComponent<{
   value: number;
 }> = ({ value }) => {
   const classNames = "hex-cell hex-cell-value-header";
-  const id = `hex-cell-value-header-${value}`;
+  // const id = `hex-cell-value-header-${value}`;
   const valueStr = hexValuesLookup[(value >>> 0) & 0xff];
   return (
-    < span id={id} className={classNames}>
+    < span className={classNames}>
       {valueStr}
     </ span>
   );
@@ -204,7 +203,8 @@ export interface IHexTable {
 export function HexTable(props: IHexTable): JSX.Element {
   const numBytes = (props.numBytes / 16) * 16;
   const endAddr = props.address + BigInt(numBytes);
-  const rows = [<HexHeaderRow key="h" address={props.address}/>];
+  const header = <HexHeaderRow key="h" address={props.address}/>;
+  const rows = [];
   let offset = props.byteOffset;
   for (
     let addr = props.address;
@@ -224,7 +224,10 @@ export function HexTable(props: IHexTable): JSX.Element {
       />
     );
   }
-  return <div id="hex-grid" className="hex-grid" >{rows}</div>;
+  return <div id="hex-grid" className="hex-grid">
+    {header}
+    <div className='hex-data-rows'>{rows}</div>
+    </div>;
 }
 
 const charCodesLookup: string[] = [];
