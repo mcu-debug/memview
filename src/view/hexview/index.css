@@ -15,13 +15,14 @@
   color: var(--vscode-symbolIcon-classForeground);
   font-weight: bold;
 	display: flex;
-  width: 3ch
+  width: 2.5ch
 }
 
 .hex-cell-value {
-	user-select: text;
+  user-select: text;
+  font-weight: bold;
 	display: inline-flex;
-  width: 3ch;
+  width: 2.5ch;
 }
 
 .hex-cell-char-header {
@@ -56,4 +57,9 @@
 
 .hex-cell-address-empty {
   visibility: hidden;
+}
+
+.hex-cell-value-dirty {
+  color: var(--vscode-editorWarning-foreground);
+  font-weight: lighter;
 }

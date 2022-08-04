@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { myGlobals } from "./globals";
-
+import { RecoilRoot } from 'recoil';
 import "./index.css";
 import { HexTable } from "./hex-elements";
 
@@ -24,7 +24,9 @@ declare global {
 */
 
 ReactDOM.render(
-  <HexTable address={0n} byteOffset={0} numBytes={bytes.length} dirty={false} />,
+  <RecoilRoot>
+    <HexTable address={0n} byteOffset={0} numBytes={bytes.length} dirty={false} />
+  </RecoilRoot>,
   // <p>This is an example of a simple HTML page with one paragraph.</p>,
   document.getElementById("root")
 );

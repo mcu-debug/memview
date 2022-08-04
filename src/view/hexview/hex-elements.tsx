@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from "react";
-import { myGlobals } from "./globals";
+import { myGlobals, frozenState } from "./globals";
+import {
+  RecoilRoot,
+  atom,
+  selector,
+  useRecoilState,
+  useRecoilValue,
+} from 'recoil';
 
 type OnCellChangeFunc = (address: bigint, val: number) => void
 interface IHexCell {
@@ -11,13 +18,13 @@ interface IHexCell {
 }
 
 export function HexCellValue(props: IHexCell): JSX.Element {
+  const [frozen, _setFrozen] = useRecoilState<boolean>(frozenState);
   const [value, setValue] = React.useState(props.value);
 
   const classNames =
     "hex-cell hex-cell-value" +
-    (props.dirty ? " hex-cell-value-dirty" : "") +
+    (props.dirty || frozen ? " hex-cell-value-dirty" : "") +
     (props.value !== value ? " hex-cell-value-changed" : "");
-  // const id = `hex-cell-value-${props.address}`;
 
   const onValueChanged = (event: any) => {
     let val = (event.target.value as string).trim().toLowerCase();
@@ -43,7 +50,7 @@ export function HexCellValue(props: IHexCell): JSX.Element {
   return (
     <span
       className={classNames}
-      contentEditable={myGlobals.isReadonly}
+      contentEditable={!frozen && myGlobals.isReadonly}
       onChange={onValueChanged}
     >
       {valueStr}

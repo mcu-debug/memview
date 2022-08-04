@@ -6,6 +6,15 @@ interface IVsCodeApi {
 	setState(value: any): void;
 }
 
+import {
+    RecoilRoot,
+    atom,
+    selector,
+    useRecoilState,
+    useRecoilValue,
+    RecoilState,
+  } from 'recoil';
+
 declare function acquireVsCodeApi(): IVsCodeApi;
 
 export interface IMyGlobals {
@@ -19,3 +28,8 @@ export const myGlobals: IMyGlobals  = {
     bytes: undefined,
     isReadonly: true
 };
+
+export const frozenState: RecoilState<boolean> = atom({
+    key: 'frozenState', // unique ID (with respect to other atoms/selectors)
+    default: false,      // default value (aka initial value)
+});
