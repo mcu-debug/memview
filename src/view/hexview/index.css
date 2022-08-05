@@ -1,8 +1,11 @@
 
 .hex-cell {
+  border: 1px;
+  border-color: coral;
   margin: 0px;
-	padding: 0 calc(var(--cell-size) / 4);
-  text-align: center;
+	/*padding: 0 calc(var(--cell-size) / 4);*/
+  text-align: center;       /* Vertical alignment */
+  justify-content: center;  /* Horizontal alignment */
   white-space: pre;
   font-family: var(--vscode-editor-font-family);
   font-weight: var(--vscode-editor-font-weight);
@@ -14,21 +17,20 @@
 .hex-cell-value-header {
   color: var(--vscode-symbolIcon-classForeground);
   font-weight: bold;
-	display: flex;
+	/* display: flex; */
   width: 2.5ch
 }
 
 .hex-cell-value {
   user-select: text;
   font-weight: bold;
-	display: inline-flex;
   width: 2.5ch;
 }
 
 .hex-cell-char-header {
   color: var(--vscode-symbolIcon-classForeground);
   font-weight: bold;
-	display: flex;
+	/* display: flex; */
   width: 2ch
 }
 
@@ -65,7 +67,12 @@
 }
 
 .hex-cell-value-changed {
-  border: 1px
+  /* color: var(--vscode-debugTokenExpression-name);
+  color: magenta;*/
+  color: var(--vscode-symbolIcon-classForeground);
+  color: var(--vscode-textLink-activeForeground);
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
 }
 
 .popup {

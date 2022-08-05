@@ -99,10 +99,15 @@ export function HexCellValue(props: IHexCell): JSX.Element {
     return !frozen && !myGlobals.isReadonly;
   };
 
+  /*
   return (
     <div className={classNames()}>
-      <span onClick={editable() ? handleClick : undefined}>{valueStr()}</span>
+      <span style={{ border: "1px" }} onClick={editable() ? handleClick : undefined}>{valueStr()}</span>
     </div>
+  );
+  */
+  return (
+    <span tabIndex={0} className={classNames()} style={{ border: "1px" }} onClick={editable() ? handleClick : undefined}>{valueStr()}</span>
   );
 }
 
