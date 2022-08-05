@@ -55,7 +55,7 @@
   width: 18ch;
 }
 
-.hex-cell-address-empty {
+.hex-cell-invisible {
   visibility: hidden;
 }
 
@@ -68,37 +68,15 @@
   border: 1px
 }
 
-.popupx {
+.popup {
   position: fixed;
   width: 4ch;
   display: flex;
   align-items: left;
+  z-index: 1000;
 }
 
-.jw-modal {
-  /* modal container fixed across whole screen */
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-
-  /* z-index must be higher than .modal-background */
-  /* z-index: 1000; */
-
-  /* enables scrolling for tall modals */
-  overflow: auto;
-}
-
-.jw-modal-body {
-  padding: 20px;
-  background: #fff;
-
-  /* margin exposes part of the modal background */
-  margin: 40px;
-}
-
-.jw-modal-background {
+.popup-background {
   /* modal background fixed across whole screen */
   position: fixed;
   top: 0;
@@ -107,33 +85,10 @@
   left: 0;
 
   /* semi-transparent black  */
-  background-color: #000;
+  background-color: var(--vscode-editor-background);
+  /* background-color: #000;*/
   opacity: 0.75;
 
-  /* z-index must be below .modal and above everything else  */
-  /* z-index: 900; */
-}
-
-body.jw-modal-open {
-  /* body overflow is hidden to hide main scrollbar when modal window is open */
-  overflow: hidden;
-}
-
-.popupy {
-  /* modal container fixed across whole screen */
-  position: fixed;
-  top: -20;
-  right: -20;
-  width: 100%;
-  height: 100%;
-
-  /* semi-transparent black  */
-  background-color: #000;
-  opacity: 0.5;
-
-  /* z-index must be higher than .modal-background */
-  /* z-index: 1000; */
-
-  /* enables scrolling for tall modals */
-  overflow: auto;
+  /* z-index must be below .popup and above everything else  */
+  z-index: 900;
 }

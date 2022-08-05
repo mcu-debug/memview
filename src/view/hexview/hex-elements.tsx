@@ -23,10 +23,13 @@ export function HexCellValue(props: IHexCell): JSX.Element {
   const [frozen, _setFrozen] = useRecoilState<boolean>(frozenState);
   const [value, setValue] = React.useState(props.value);
 
-  const classNames =
-    "hex-cell hex-cell-value" +
-    (props.dirty || frozen ? " hex-cell-value-dirty" : "") +
-    (props.value !== value ? " hex-cell-value-changed" : "");
+  const classNames = () => {
+    return (
+      "hex-cell hex-cell-value" +
+      (props.dirty || frozen ? " hex-cell-value-dirty" : "") +
+      (props.value !== value ? " hex-cell-value-changed" : "")
+    );
+  };
 
   const onValueChanged = (val: string) => {
     val = val.trim().toLowerCase();
@@ -51,16 +54,13 @@ export function HexCellValue(props: IHexCell): JSX.Element {
   const handleClick = (event: any) => {
     switch (event.detail) {
       case 1: {
-        console.log("single click");
         break;
       }
       case 2: {
-        console.log("double click");
         openPopup(event);
         break;
       }
       case 3: {
-        console.log("triple click");
         break;
       }
       default: {
@@ -75,19 +75,17 @@ export function HexCellValue(props: IHexCell): JSX.Element {
       clientX: event.clientX,
       clientY: event.clientY,
       value: valueStr(),
-      callback: onPopupDone
+      callback: onPopupDone,
     };
-    console.log('calliing poppu');
     try {
       PopupHexCellEdit.open(event, props);
-    }
-    catch (e) {
+    } catch (e) {
       console.log(`popup exception ${e}`);
+      throw e;
     }
   };
 
   const onPopupDone = (v: string | undefined) => {
-    console.log(`onPopupDone called '${v}'`);
     if (v != null) {
       onValueChanged(v);
     }
@@ -97,17 +95,15 @@ export function HexCellValue(props: IHexCell): JSX.Element {
     return value < 0 ? "--" : hexValuesLookup[(value >>> 0) & 0xff];
   };
 
-  const editable = !frozen && !myGlobals.isReadonly;
+  const editable = () => {
+    return !frozen && !myGlobals.isReadonly;
+  };
+
   return (
-    <div className={classNames}>
-      <span onClick={editable ? handleClick : undefined}>{valueStr()}</span>
+    <div className={classNames()}>
+      <span onClick={editable() ? handleClick : undefined}>{valueStr()}</span>
     </div>
   );
-  /*
-   return (
-     <span className={classNames} onClick={handleClick}>{valueStr}</span>
-   );
-   */
 }
 
 export const HexCellAddress: React.FC<{ address: bigint }> = ({ address }) => {
@@ -129,9 +125,11 @@ export const HexCellChar: React.FunctionComponent<{
 
 export const HexCellEmpty: React.FunctionComponent<{
   length: number;
-}> = ({ length = 1 }) => {
-  const classNames = "hex-cell";
-  const valueStr = " ".repeat(length);
+  fillChar?: string;
+  cls?: string;
+}> = ({ length = 1, fillChar = " ", cls = "" }) => {
+  const classNames = "hex-cell " + cls;
+  const valueStr = fillChar.repeat(length);
   return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -166,21 +164,24 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
   for (let x = 0; x < 16; x++, lowByte++) {
     ary.push(lowByte & 0xff);
   }
-  const decodedText = "Decoded Bytes".split("");
-  for (let x = decodedText.length; x < 16; x++) {
-    decodedText.push(" ");
-  }
+  const decodedText = "Decoded Bytes".padEnd(16, " ").split("");
   return (
     <div className={classNames}>
       <HexCellEmptyHeader
         key={1}
         length={18}
         fillChar="."
-        cls={"hex-cell-address hex-cell-address-empty"}
+        cls="hex-cell-address hex-cell-invisible"
       />
       {ary.map((v, i) => {
         return <HexCellValueHeader key={i + 2} value={v} />;
       })}
+      <HexCellEmpty
+        key={100}
+        length={1}
+        fillChar="."
+        cls="hex-cell-invisible"
+      />
       {decodedText.map((v, i) => {
         return <HexCellEmptyHeader key={i + 18} fillChar={v} />;
       })}
@@ -219,11 +220,19 @@ export function HexDataRow(props: IHexDataRow): JSX.Element {
       <HexCellChar address={props.address + ixx} val={val} key={ix + 18} />
     );
   }
+  const gap = (
+    <HexCellEmpty
+      length={1}
+      fillChar="."
+      cls="hex-cell-invisible"
+    ></HexCellEmpty>
+  );
   return (
     <div className={classNames}>
       <HexCellAddress key={1} address={props.address} />
       <div>
         {values}
+        {gap}
         {chars}
       </div>
     </div>
@@ -274,13 +283,17 @@ interface IHexCellEditProps {
 }
 interface IHexCellEditState {
   isOpen: boolean;
-  value: string
+  value: string;
 }
 // This is a modification of what I found here
 // https://jasonwatmore.com/post/2018/01/23/react-custom-modal-window-dialog-box
-export class PopupHexCellEdit extends React.Component<IHexCellEditProps, IHexCellEditState> {
+export class PopupHexCellEdit extends React.Component<
+  IHexCellEditProps,
+  IHexCellEditState
+> {
   static globalModel: PopupHexCellEdit | undefined;
-  static globalProps: IHexCellEditProps = {    // Can also be used as defaultProps
+  static globalProps: IHexCellEditProps = {
+    // Can also be used as defaultProps
     trigger: false,
     clientX: 0,
     clientY: 0,
@@ -293,80 +306,103 @@ export class PopupHexCellEdit extends React.Component<IHexCellEditProps, IHexCel
   private static inputElementId = "PopupHexCellEdit.input";
   private handleClickFunc: any;
   private onChangeFunc: any;
-  private lastGoodValue = '';
+  private lastGoodValue = "";
 
   static open(e: any, props: IHexCellEditProps) {
-    console.log('popup:open called');
     e && e.preventDefault();
     if (PopupHexCellEdit.globalModel) {
       Object.assign(PopupHexCellEdit.globalProps, props);
       PopupHexCellEdit.globalModel.lastGoodValue = props.value;
-      console.log(`1. InPopup Initial value = '${PopupHexCellEdit.globalModel.lastGoodValue}'`);
-      PopupHexCellEdit.globalModel.setState({ isOpen: true, value: props.value });
+      PopupHexCellEdit.globalModel.setState({
+        isOpen: true,
+        value: props.value,
+      });
+      setTimeout(() => {
+        const elt = document.getElementById(PopupHexCellEdit.inputElementId) as HTMLInputElement;
+        if (elt) {
+          elt.focus();
+          elt.select();
+        }
+      }, 100);
       // document.body.classList.add("jw-modal-open");
-      document.addEventListener("keydown", PopupHexCellEdit.onKeyDownFunc, false);
+      document.addEventListener(
+        "keydown",
+        PopupHexCellEdit.onKeyDownFunc,
+        false
+      );
     } else {
-      throw new Error("PopupHexCellEdit: no global model defined before calling open");
+      throw new Error(
+        "PopupHexCellEdit: no global model defined before calling open"
+      );
     }
   }
 
   static close(e: any) {
     e && e.preventDefault();
     if (PopupHexCellEdit.globalModel) {
-      // close modal specified by id
       PopupHexCellEdit.globalModel.setState({ isOpen: false });
-      // document.body.classList.remove("jw-modal-open");
-      document.removeEventListener("keydown", PopupHexCellEdit.onKeyDownFunc, false);
+      document.removeEventListener(
+        "keydown",
+        PopupHexCellEdit.onKeyDownFunc,
+        false
+      );
     } else {
-      throw new Error("PopupHexCellEdit: no global model defined when calling close");
+      throw new Error(
+        "PopupHexCellEdit: no global model defined when calling close"
+      );
     }
   }
 
   constructor(props: IHexCellEditProps) {
     super(props);
     if (PopupHexCellEdit.globalModel) {
-      throw new Error('IHexCellEditProps is a singleton. Cannot call this multiple times without unmounting first');
+      throw new Error(
+        "IHexCellEditProps is a singleton. Cannot call this multiple times without unmounting first"
+      );
     }
     Object.assign(PopupHexCellEdit.globalProps, props);
-    this.state = { isOpen: false, value: '' };
+    this.state = { isOpen: false, value: "" };
     this.handleClickFunc = this.handleClick.bind(this);
     this.onChangeFunc = this.onChange.bind(this);
     PopupHexCellEdit.onKeyDownFunc = this.onKeyDown.bind(this);
   }
 
   componentDidMount() {
-    // move element to bottom of page (just before </body>) so it can be displayed above everything else
-    // document.body.appendChild((this as any).element);
-
     // We are now ready for open/close
     PopupHexCellEdit.globalModel = this;
   }
 
   componentWillUnmount() {
+    // We probably need to invalidate a bunch of other globals
     PopupHexCellEdit.globalModel = undefined;
   }
 
   handleClick(e: any) {
     // close modal on background click
-    if (e.target.className === "jw-modal") {
+    if (e.target.className === "popup-background") {
       PopupHexCellEdit.globalProps.callback(undefined);
       PopupHexCellEdit.close(e);
     }
   }
 
   private onChange(event: any) {
-    const v = event.target.value;
-    console.log(`On Change ${v}`);
+    const v = event.target.value.trim();
     this.setState({ value: v });
-    if (!/[0-9a-fA-f]{0,2}/.test(v)) {
-      // The patter on the input element does not work because it is not in a form
-      // Onm case, it doesn't we do our own.
-      console.log(`3. InPopup Rejected value = '${v}'`);
+    if (!/^[0-9a-fA-f]{0,2}$/.test(v)) {
+      // The pattern on the input element does not work because it is not in a form
+      // Onm case, it doesn't we do our own. We do our own in the keyDown event but
+      // something may still geth through
       event.target.value = this.lastGoodValue;
     } else {
-      this.lastGoodValue = event.target.value;
+      this.lastGoodValue = v;
     }
-    console.log(`4. InPopup NextValue = '${v}'`);
+    if (v !== event.target.value) {
+      // TODO: do this differently to check for valid input. invalid chars should never
+      // even be allowed
+      setTimeout(() => {
+        event.target.value = this.lastGoodValue;
+      }, 50);
+    }
   }
 
   public onKeyDown(event: any) {
@@ -374,6 +410,9 @@ export class PopupHexCellEdit extends React.Component<IHexCellEditProps, IHexCel
     if (event.key === "Enter") {
       v = this.lastGoodValue;
     } else if (event.key !== "Escape") {
+      if ((event.key.length === 1) && !/[0-9a-fA-f]/.test(event.key)) {
+        event.preventDefault();
+      }
       return;
     }
     PopupHexCellEdit.globalProps.callback(v);
@@ -383,56 +422,32 @@ export class PopupHexCellEdit extends React.Component<IHexCellEditProps, IHexCel
   render() {
     return (
       <div
-        style={{ display: +(this.state as any).isOpen ? "" : "none" }}
+        className="PopupHexCellEdit"
+        style={{ display: +this.state.isOpen ? "" : "none" }}
         onClick={this.handleClickFunc}
-        ref={(el) => ((this as any).element = el)}
       >
-        <div className="jw-modal">
-          <div className="jw-modal-body">
-            <div
-              id={`Popup-1234`}
-              className="popup"
-              style={{ top: PopupHexCellEdit.globalProps.clientY, left: PopupHexCellEdit.globalProps.clientX }}
-            >
-              <input
-                id={PopupHexCellEdit.inputElementId}
-                autoFocus
-                type="text"
-                maxLength={2}
-                pattern="[0-9a-fA-F]{1,2}"
-                value={this.state.value}
-                onChange={this.onChangeFunc}
-              ></input>
-            </div>
-            {this.props.children}
-          </div>
+        <div
+          className="popup"
+          style={{
+            top: PopupHexCellEdit.globalProps.clientY,
+            left: PopupHexCellEdit.globalProps.clientX,
+          }}
+        >
+          <input
+            id={PopupHexCellEdit.inputElementId}
+            autoFocus
+            type="text"
+            maxLength={2}
+            style={{ width: "4ch" }}
+            pattern="[0-9a-fA-F]{1,2}" /* does not work */
+            value={this.state.value}
+            onChange={this.onChangeFunc}
+          ></input>
         </div>
-        <div className="jw-modal-background"></div>
+        <div className="popup-background"></div>
       </div>
     );
   }
-
-  /*
-  render() {
-    return (
-      <div
-        className="popup"
-        style={{ display: +this.state.isOpen ? "" : "none", top: PopupHexCellEdit.globalProps.clientY, left: PopupHexCellEdit.globalProps.clientX }}
-      >
-        <input
-          id={PopupHexCellEdit.inputElementId}
-          autoFocus
-          type="text"
-          maxLength={2}
-          pattern="[0-9a-fA-F]{1,2}"
-          style= {{ width: "4ch" }}
-          value={this.state.value}
-          onChange={this.onChangeFunc}
-        ></input>
-      </div>
-    );
-  }
-  */
 }
 
 const charCodesLookup: string[] = [];
