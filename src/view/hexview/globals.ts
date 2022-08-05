@@ -26,7 +26,7 @@ export interface IMyGlobals {
 export const myGlobals: IMyGlobals  = {
     vscode: acquireVsCodeApi(),
     bytes: undefined,
-    isReadonly: true
+    isReadonly: false
 };
 
 export const frozenState: RecoilState<boolean> = atom({
