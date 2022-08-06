@@ -7,7 +7,7 @@ import events from 'events';
 
 export const TrackedDebuggers = [
     'cortex-debug',
-    'cppdebug'
+    'cppdbg'
 ];
 
 // An event is generated whenever the debugger status changes or when read/write capabilities change/discovered
@@ -27,8 +27,8 @@ export interface ITrackedDebugSession {
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
     static EventEmitter = new events.EventEmitter();
 
-    private static allSessionsById: {[sessionId: string]: ITrackedDebugSession} = {};
-    private static allSessionsByConfigName: {[configName: string]: ITrackedDebugSession} = {};
+    private static allSessionsById: { [sessionId: string]: ITrackedDebugSession } = {};
+    private static allSessionsByConfigName: { [configName: string]: ITrackedDebugSession } = {};
 
     private lastFrameId: number | undefined = undefined;
     constructor(public session: vscode.DebugSession) {
@@ -127,6 +127,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     private static setStatus(s: vscode.DebugSession, status: DebugSessionSatus, frameId?: number) {
+        console.log(`Debug Tracker: Session '${s.name}': Status ${status}`);
         const props = DebuggerTracker.allSessionsById[s.id];
         if (props && (props.status !== status)) {
             props.status = status;

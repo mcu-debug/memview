@@ -1,12 +1,12 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 import querystring from 'node:querystring';
-import { readFileSync } from "node:fs";
-import { IMemviewDocumentOptions } from "./globals";
+import { readFileSync } from 'node:fs';
+import { IMemviewDocumentOptions } from './globals';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
-    VSCODE_DEBUG_MEMORY_SCHEME: "vscode-debug-memory",       // Used by VSCode core
-    CORTEX_DEBUG_MEMORY_SCHEME: "cortex-debug-memory"        // Used by cortex-debug
+    VSCODE_DEBUG_MEMORY_SCHEME: 'vscode-debug-memory',       // Used by VSCode core
+    CORTEX_DEBUG_MEMORY_SCHEME: 'cortex-debug-memory'        // Used by cortex-debug
 };
 const KNOWN_SCHEMES_ARRAY = Object.values(KNOWN_SCHMES);
 
@@ -15,11 +15,11 @@ export class MemviewDocument implements vscode.CustomDocument {
     private options: IMemviewDocumentOptions = {
         uriString: '',
         isReadonly: true,
-        memoryReference: "0x0",
+        memoryReference: '0x0',
         isFixedSize: false,
         initialSize: 1024,
         bytes: new Uint8Array(0),
-        fsPath: ""
+        fsPath: ''
     };
     constructor(public uri: vscode.Uri) {
     }
@@ -33,7 +33,7 @@ export class MemviewDocument implements vscode.CustomDocument {
         this.options.uriString = this.uri.toString();
         this.options.fsPath = this.uri.fsPath;
         if (this.uri.scheme === KNOWN_SCHMES.VSCODE_DEBUG_MEMORY_SCHEME) {
-            const p = this.uri.path.split("/");
+            const p = this.uri.path.split('/');
             if (p.length) {
                 this.options.memoryReference = decodeURIComponent(p[0]);
                 try {
@@ -74,7 +74,7 @@ export class MemviewDocument implements vscode.CustomDocument {
 }
 
 export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
-    private static readonly viewType = "memView.memview";
+    private static readonly viewType = 'memView.memview';
     public static register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
             vscode.window.registerCustomEditorProvider(
@@ -92,16 +92,16 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
     private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentContentChangeEvent<MemviewDocument>>();
     public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
     saveCustomDocument(_document: vscode.CustomDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     saveCustomDocumentAs(_document: vscode.CustomDocument, _destination: vscode.Uri, _cancellation: vscode.CancellationToken): Thenable<void> {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     revertCustomDocument(_document: vscode.CustomDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     backupCustomDocument(_document: vscode.CustomDocument, _context: vscode.CustomDocumentBackupContext, _cancellation: vscode.CancellationToken): Thenable<vscode.CustomDocumentBackup> {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
 
     async openCustomDocument(
@@ -110,7 +110,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
         _token: vscode.CancellationToken
     ): Promise<vscode.CustomDocument> {
         if (!KNOWN_SCHEMES_ARRAY.includes(uri.scheme.toLocaleLowerCase())) {
-            throw new Error(`Unsupported Uri scheme ${uri.scheme}. Allowed schemes are ${KNOWN_SCHEMES_ARRAY.join(", ")}`);
+            throw new Error(`Unsupported Uri scheme ${uri.scheme}. Allowed schemes are ${KNOWN_SCHEMES_ARRAY.join(', ')}`);
         }
         const document = new MemviewDocument(uri);
         await document.decodeOptionsFromUri();
@@ -143,10 +143,10 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
     private getWebviewContent(webview: vscode.Webview, doc: MemviewDocument): string {
         // Convert the styles and scripts for the webview into webview URIs
         const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js")
+            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.js')
         );
         const styleUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css")
+            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.css')
         );
         const nonce = getNonce();
 
@@ -181,8 +181,8 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
     }
     private getHtmlForWebviewx(webview: vscode.Webview): string {
         // Convert the styles and scripts for the webview into webview URIs
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js"));
-        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css"));
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.js'));
+        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.css'));
 
         // Use a nonce to whitelist which scripts can be run
         const nonce = getNonce();

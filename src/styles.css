@@ -1,8 +1,7 @@
 .main-component {
     background-color: lightblue;
-      width: 300px;
-      min-height: 200px;
-      margin: 300px auto;
-      box-sizing: border-box;
-  }
-  
+    width: 300px;
+    min-height: 200px;
+    margin: 300px auto;
+    box-sizing: border-box;
+}
