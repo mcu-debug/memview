@@ -147,13 +147,18 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 }
 
 export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
-    constructor(private context: vscode.ExtensionContext) {
-        context.subscriptions.push(
+    static context: vscode.ExtensionContext;
+    public static register(cxt: vscode.ExtensionContext): DebugTrackerFactory {
+        DebugTrackerFactory.context = cxt;
+        return new DebugTrackerFactory();
+    }
+    constructor() {
+        DebugTrackerFactory.context.subscriptions.push(
             ...DebuggerTracker.TrackAllSessions(),
             vscode.workspace.onDidChangeConfiguration(this.settingsChanged.bind(this))
         );
         TrackedDebuggers.map((debuggerType) => {
-            context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(debuggerType, this));
+            DebugTrackerFactory.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(debuggerType, this));
         });
         this.updateTrackedDebuggersFromSettings();
     }
@@ -170,7 +175,7 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
         if (prop && Array.isArray(prop)) {
             for (let ix = 0; ix < prop.length; ix++) {
                 if (!TrackedDebuggers.includes(prop[ix])) {
-                    this.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(prop[ix], this));
+                    DebugTrackerFactory.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(prop[ix], this));
                 }
             }
         }

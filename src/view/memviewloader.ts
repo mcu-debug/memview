@@ -6,7 +6,10 @@ export class HexViewLoader {
   private readonly _extensionPath: string;
   private _disposables: vscode.Disposable[] = [];
 
-  constructor(fileUri: vscode.Uri | undefined, public context: vscode.ExtensionContext) {
+  constructor(
+    fileUri: vscode.Uri | undefined,
+    public context: vscode.ExtensionContext
+  ) {
     this._extensionPath = context.extensionPath;
 
     // eslint-disable-next-line no-constant-condition
@@ -41,8 +44,12 @@ export class HexViewLoader {
 
   private getWebviewContent(webview: vscode.Webview): string {
     // Convert the styles and scripts for the webview into webview URIs
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js"));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css"));
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js")
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css")
+    );
 
     // Use a nonce to whitelist which scripts can be run
     const nonce = getNonce();
@@ -51,7 +58,7 @@ export class HexViewLoader {
       initialData[i] = Math.floor(Math.random() * 256) & 0xff;
     }
 
-    const ret = /* html */`
+    const ret = /* html */ `
 			<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -67,10 +74,10 @@ export class HexViewLoader {
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<link href="${styleUri}" rel="stylesheet" />
 				<title>Hex Editor</title>
-                </head>
+      </head>
 			<body>
       <div id="root"></div>
-                <script nonce="${nonce}" src="${scriptUri}" defer></script>
+          <script nonce="${nonce}" src="${scriptUri}" defer></script>
       </body>
 			</html>`;
     return ret;
@@ -78,8 +85,9 @@ export class HexViewLoader {
 }
 
 function getNonce() {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

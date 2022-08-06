@@ -1,11 +1,5 @@
 // declare const acquireVsCodeApi: any;
 
-interface IVsCodeApi {
-	postMessage(msg: unknown): void;
-	getState(): any;
-	setState(value: any): void;
-}
-
 import {
     RecoilRoot,
     atom,
@@ -13,7 +7,13 @@ import {
     useRecoilState,
     useRecoilValue,
     RecoilState,
-  } from 'recoil';
+} from 'recoil';
+
+interface IVsCodeApi {
+    postMessage(msg: unknown): void;
+    getState(): any;
+    setState(value: any): void;
+}
 
 declare function acquireVsCodeApi(): IVsCodeApi;
 
@@ -23,7 +23,7 @@ export interface IMyGlobals {
     isReadonly: boolean;
 }
 
-export const myGlobals: IMyGlobals  = {
+export const myGlobals: IMyGlobals = {
     vscode: acquireVsCodeApi(),
     bytes: undefined,
     isReadonly: false
@@ -33,3 +33,14 @@ export const frozenState: RecoilState<boolean> = atom({
     key: 'frozenState', // unique ID (with respect to other atoms/selectors)
     default: false,      // default value (aka initial value)
 });
+
+export interface IMemviewDocumentOptions {
+    bytes: Buffer;
+    uriString: string;
+    fsPath: string;
+    isReadonly?: boolean;
+    memoryReference?: string;
+    expression?: string;
+    isFixedSize?: boolean;
+    initialSize?: number;
+}

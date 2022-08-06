@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from "react";
 import { myGlobals, frozenState } from "./globals";
+import * as Utils from "./utils";
 import {
   RecoilRoot,
   atom,
@@ -270,13 +271,17 @@ export function HexTable(props: IHexTable): JSX.Element {
       />
     );
   }
-  return (
+
+  const timer = new Utils.Timekeeper();
+  const ret = (
     <div id="hex-grid" className="hex-grid">
       {header}
       <div className="hex-data-rows">{rows}</div>
       <PopupHexCellEdit {...PopupHexCellEdit.globalProps}></PopupHexCellEdit>
     </div>
   );
+  console.log(`Toplevel:render ${timer.deltaMs()}ms`);
+  return ret;
 }
 
 interface IHexCellEditProps {

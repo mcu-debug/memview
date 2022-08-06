@@ -1,6 +1,7 @@
 
 import * as vscode from "vscode";
-import { HexViewLoader } from "./view/hexviewloader";
+import * as path from "path";
+import { HexViewLoader } from "./view/memviewloader";
 import { DebugTrackerFactory } from "./view/hexview/debug-tracker";
 import { MemviewDocumentProvider } from "./view/hexview/memview-doc";
 
@@ -10,12 +11,14 @@ export function activate(context: vscode.ExtensionContext) {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		// vscode.window.showInformationMessage("Hello World from memview!");
-		const blah = new HexViewLoader(undefined, context);
+		// const blah = new HexViewLoader(undefined, context);
 	});
 
 	context.subscriptions.push(disposable);
-    new DebugTrackerFactory(context);
+    DebugTrackerFactory.register(context);
     MemviewDocumentProvider.register(context);
+    const p = path.join(context.extensionPath,'package.json');
+    vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(p), 'memView.memview');
 }
 
 // this method is called when your extension is deactivated

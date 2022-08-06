@@ -19,6 +19,18 @@
         "command": "memview.helloWorld",
         "title": "Hello World"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "memView.memview",
+        "displayName": "Memory Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.memview"
+          }
+        ],
+        "priority": "option"
+      }
     ]
   },
   "scripts": {

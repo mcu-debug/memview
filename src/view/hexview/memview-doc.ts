@@ -1,33 +1,37 @@
 import * as vscode from "vscode";
 import querystring from 'node:querystring';
+import { readFileSync } from "node:fs";
+import { IMemviewDocumentOptions } from "./globals";
 
 const KNOWN_SCHMES = {
-    VSCODE_DEBUG_MEMORY_SCHEME: "vscode-debug-memory",         // Used by VSCode core
+    FILE: 'file',                                            // Only for testing
+    VSCODE_DEBUG_MEMORY_SCHEME: "vscode-debug-memory",       // Used by VSCode core
     CORTEX_DEBUG_MEMORY_SCHEME: "cortex-debug-memory"        // Used by cortex-debug
 };
 const KNOWN_SCHEMES_ARRAY = Object.values(KNOWN_SCHMES);
 
-interface IMemviewDocumentOptions {
-    isReadonly?: boolean;
-    memoryReference?: string;
-    expression?: string;
-    isFixedSize?: boolean;
-    initialSize?: number;
-}
-
 export class MemviewDocument implements vscode.CustomDocument {
     private sessionId: string | undefined;
     private options: IMemviewDocumentOptions = {
+        uriString: '',
         isReadonly: true,
         memoryReference: "0x0",
         isFixedSize: false,
-        initialSize: 1024
+        initialSize: 1024,
+        bytes: new Uint8Array(0),
+        fsPath: ""
     };
     constructor(public uri: vscode.Uri) {
     }
 
+    public getOptions(): IMemviewDocumentOptions {
+        return Object.assign({}, this.options);
+    }
+
     async decodeOptionsFromUri(_options?: IMemviewDocumentOptions) {
         Object.assign(this.options, _options);
+        this.options.uriString = this.uri.toString();
+        this.options.fsPath = this.uri.fsPath;
         if (this.uri.scheme === KNOWN_SCHMES.VSCODE_DEBUG_MEMORY_SCHEME) {
             const p = this.uri.path.split("/");
             if (p.length) {
@@ -50,20 +54,27 @@ export class MemviewDocument implements vscode.CustomDocument {
                 });
                 */
             }
-        } else {
+            this.sessionId = this.uri.authority;
+        } else if (this.uri.scheme === KNOWN_SCHMES.CORTEX_DEBUG_MEMORY_SCHEME) {
             const opts = querystring.parse(this.uri.query);
             Object.assign(this.options, opts);
+            this.sessionId = this.uri.authority;
+        } else {
+            this.sessionId = undefined;
+            const contents = readFileSync(this.uri.fsPath);
+            this.options.bytes = contents;
+            this.options.initialSize = this.options.bytes.length;
+            this.options.isFixedSize = true;
         }
-        this.sessionId = this.uri.authority;
     }
 
     dispose(): void {
-        throw new Error("Method not implemented.");
+        // throw new Error("Method not implemented.");
     }
 }
 
 export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
-    private static readonly viewType = "memview.memview";
+    private static readonly viewType = "memView.memview";
     public static register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
             vscode.window.registerCustomEditorProvider(
@@ -113,11 +124,15 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
     ): Promise<void> {
         // Add the webview to our internal set of active webviews
         // this.webviews.add(document.uri, webviewPanel);
+        const memDoc = document as MemviewDocument;
+        if (!memDoc) {
+            throw new Error('Invalid document type to open');
+        }
 
         webviewPanel.webview.options = {
             enableScripts: true,
         };
-        webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+        webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, memDoc);
         webviewPanel.webview.onDidReceiveMessage(this.handleMessage.bind(this));
     }
 
@@ -125,7 +140,46 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
         console.log(e);
     }
 
-    private getHtmlForWebview(webview: vscode.Webview): string {
+    private getWebviewContent(webview: vscode.Webview, doc: MemviewDocument): string {
+        // Convert the styles and scripts for the webview into webview URIs
+        const scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js")
+        );
+        const styleUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css")
+        );
+        const nonce = getNonce();
+
+        const opts = JSON.stringify(doc.getOptions());
+
+        const ret = /* html */ `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+
+            <!--
+            Use a content security policy to only allow loading images from https or from our extension directory,
+            and only allow scripts that have a specific nonce.
+            -->
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}
+    blob:; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${styleUri}" rel="stylesheet" />
+            <title>Hex Editor</title>
+            <script nonce="${nonce}" type="text/javascript">
+                window.initialDataFromVSCode = '${opts}';
+            </script>
+          </head>
+          <body>
+          <div id="root"></div>
+          <script nonce="${nonce}" src="${scriptUri}" defer></script>
+          </body>
+        </html>`;
+        return ret;
+    }
+    private getHtmlForWebviewx(webview: vscode.Webview): string {
         // Convert the styles and scripts for the webview into webview URIs
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.js"));
         const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "dist", "memview.css"));
