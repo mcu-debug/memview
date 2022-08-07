@@ -12,11 +12,7 @@ import {
 } from 'recoil';
 import { useEffect } from 'react';
 
-type OnCellChangeFunc = (
-    address: bigint,
-    byteOffset: number,
-    val: number
-) => void;
+type OnCellChangeFunc = (address: bigint, byteOffset: number, val: number) => void;
 interface IHexCell {
     address: bigint;
     byteOffset: number;
@@ -140,9 +136,7 @@ export const HexCellChar: React.FunctionComponent<{
 }> = ({ address, byteOffset }) => {
     const classNames = 'hex-cell hex-cell-char';
     // const id = `hex-cell-char-${address}`;
-    const val = addrInRange(address, byteOffset)
-        ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff
-        : -1;
+    const val = addrInRange(address, byteOffset) ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff : -1;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
     return <span className={classNames}>{valueStr}</span>;
 };
@@ -200,12 +194,7 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
             {ary.map((v, i) => {
                 return <HexCellValueHeader key={i + 2} value={v} />;
             })}
-            <HexCellEmpty
-                key={100}
-                length={1}
-                fillChar='.'
-                cls='hex-cell-invisible'
-            />
+            <HexCellEmpty key={100} length={1} fillChar='.' cls='hex-cell-invisible' />
             {decodedText.map((v, i) => {
                 return <HexCellEmptyHeader key={i + 18} fillChar={v} />;
             })}
@@ -253,17 +242,9 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                     onChange={this.rowChanged.bind(this)}
                 />
             );
-            chars.push(
-                <HexCellChar address={addr} byteOffset={offset} key={ix + 18} />
-            );
+            chars.push(<HexCellChar address={addr} byteOffset={offset} key={ix + 18} />);
         }
-        const gap = (
-            <HexCellEmpty
-                length={1}
-                fillChar='.'
-                cls='hex-cell-invisible'
-            ></HexCellEmpty>
-        );
+        const gap = <HexCellEmpty length={1} fillChar='.' cls='hex-cell-invisible'></HexCellEmpty>;
         return (
             <div className={classNames}>
                 <HexCellAddress key={1} address={this.props.address} />
@@ -308,9 +289,7 @@ export function HexTable(props: IHexTable): JSX.Element {
         <div id='hex-grid' className='hex-grid'>
             {header}
             <div className='hex-data-rows'>{rows}</div>
-            <PopupHexCellEdit
-                {...PopupHexCellEdit.globalProps}
-            ></PopupHexCellEdit>
+            <PopupHexCellEdit {...PopupHexCellEdit.globalProps}></PopupHexCellEdit>
         </div>
     );
     console.log(`Top-level:render ${timer.deltaMs()}ms`);
@@ -330,10 +309,7 @@ interface IHexCellEditState {
 }
 // This is a modification of what I found here
 // https://jasonwatmore.com/post/2018/01/23/react-custom-modal-window-dialog-box
-export class PopupHexCellEdit extends React.PureComponent<
-    IHexCellEditProps,
-    IHexCellEditState
-> {
+export class PopupHexCellEdit extends React.PureComponent<IHexCellEditProps, IHexCellEditState> {
     static globalModel: PopupHexCellEdit | undefined;
     static globalProps: IHexCellEditProps = {
         // Can also be used as defaultProps
@@ -374,20 +350,12 @@ export class PopupHexCellEdit extends React.PureComponent<
                     elt.focus();
                     elt.select();
                 } else {
-                    console.error(
-                        'Could not find textInput in document either'
-                    );
+                    console.error('Could not find textInput in document either');
                 }
             }, 10);
-            document.addEventListener(
-                'keydown',
-                PopupHexCellEdit.onKeyDownFunc,
-                false
-            );
+            document.addEventListener('keydown', PopupHexCellEdit.onKeyDownFunc, false);
         } else {
-            throw new Error(
-                'PopupHexCellEdit: no global model defined before calling open'
-            );
+            throw new Error('PopupHexCellEdit: no global model defined before calling open');
         }
     }
 
@@ -395,15 +363,9 @@ export class PopupHexCellEdit extends React.PureComponent<
         e && e.preventDefault();
         if (PopupHexCellEdit.globalModel) {
             PopupHexCellEdit.globalModel.setState({ isOpen: false });
-            document.removeEventListener(
-                'keydown',
-                PopupHexCellEdit.onKeyDownFunc,
-                false
-            );
+            document.removeEventListener('keydown', PopupHexCellEdit.onKeyDownFunc, false);
         } else {
-            throw new Error(
-                'PopupHexCellEdit: no global model defined when calling close'
-            );
+            throw new Error('PopupHexCellEdit: no global model defined when calling close');
         }
     }
 
@@ -546,8 +508,12 @@ const charCodesLookup: string[] = [];
 const hexValuesLookup: string[] = [];
 for (let byte = 0; byte <= 255; byte++) {
     const v =
-        byte <= 32 || (byte >= 127 && byte <= 159)
+        byte <= 32
             ? odStyleChars[byte]
+            : byte === 127
+            ? 'del'
+            : byte > 127 && byte <= 159
+            ? '.'
             : String.fromCharCode(byte);
     charCodesLookup.push(v);
     hexValuesLookup.push(byte.toString(16).padStart(2, '0'));
