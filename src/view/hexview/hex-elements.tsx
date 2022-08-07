@@ -216,6 +216,7 @@ interface IHexDataRowState {
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
+    private onRowChangeFunc = this.rowChanged.bind(this);
     constructor(public props: IHexDataRow) {
         super(props);
         this.state = { counter: 0 };
@@ -241,7 +242,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                     address={addr}
                     byteOffset={offset}
                     dirty={this.props.dirty}
-                    onChange={this.rowChanged.bind(this)}
+                    onChange={this.onRowChangeFunc}
                 />
             );
             chars.push(<HexCellChar address={addr} byteOffset={offset} key={ix + 18} />);
