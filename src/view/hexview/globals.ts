@@ -19,6 +19,7 @@ declare function acquireVsCodeApi(): IVsCodeApi;
 
 export interface IMyGlobals {
     vscode: IVsCodeApi;
+    origBytes: Uint8Array;
     bytes: Uint8Array;
     // both min and max addresses are inclusive
     minAddress: bigint,
@@ -28,6 +29,7 @@ export interface IMyGlobals {
 
 export const myGlobals: IMyGlobals = {
     vscode: acquireVsCodeApi(),
+    origBytes: new Uint8Array(0),
     bytes: new Uint8Array(0),
     minAddress: 0n,
     maxAddress: undefined,

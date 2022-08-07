@@ -23,15 +23,15 @@ interface IHexCell {
 export function HexCellValue(props: IHexCell): JSX.Element {
     const inRange = addrInRange(props.address, props.byteOffset);
     const val = inRange ? myGlobals.bytes[props.byteOffset] : -1;
+    const origVal = inRange ? myGlobals.origBytes[props.byteOffset] : -1;
     const [frozen] = useRecoilState<boolean>(frozenState);
-    const [initValue] = React.useState(val);
     const [value, setValue] = React.useState(val);
 
     const classNames = () => {
         return (
             'hex-cell hex-cell-value' +
             (props.dirty || frozen ? ' hex-cell-value-dirty' : '') +
-            (initValue !== value ? ' hex-cell-value-changed' : '')
+            (origVal !== value ? ' hex-cell-value-changed' : '')
         );
     };
 
@@ -134,10 +134,12 @@ export const HexCellChar: React.FunctionComponent<{
     address: bigint;
     byteOffset: number;
 }> = ({ address, byteOffset }) => {
-    const classNames = 'hex-cell hex-cell-char';
-    // const id = `hex-cell-char-${address}`;
-    const val = addrInRange(address, byteOffset) ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff : -1;
+    // const id = `hex-cell-char-${address}`
+    const inRange = addrInRange(address, byteOffset);
+    const val = inRange ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff : -1;
+    const origVal = inRange ? (myGlobals.origBytes[byteOffset] >>> 0) & 0xff : -1;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
+    const classNames = 'hex-cell hex-cell-char' + (val !== origVal ? ' hex-cell-char-changed' : '');
     return <span className={classNames}>{valueStr}</span>;
 };
 

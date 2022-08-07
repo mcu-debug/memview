@@ -33,6 +33,8 @@ if (!myGlobals.bytes) {
     myGlobals.maxAddress = BigInt(myGlobals.bytes.length - 1);
 }
 
+myGlobals.origBytes = Uint8Array.from(myGlobals.bytes);
+
 /*
 declare global {
   interface Window {

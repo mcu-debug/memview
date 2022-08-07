@@ -1,102 +1,102 @@
-
 .hex-cell {
-  border: 1px;
-  border-color: coral;
-  margin: 0px;
-	/*padding: 0 calc(var(--cell-size) / 4);*/
-  text-align: center;       /* Vertical alignment */
-  justify-content: center;  /* Horizontal alignment */
-  white-space: pre;
-  font-family: var(--vscode-editor-font-family);
-  font-weight: var(--vscode-editor-font-weight);
-  font-size: var(--vscode-editor-font-size);
-	display: inline-flex;
-  line-height: 2.5ch;
+    border: 1px;
+    border-color: coral;
+    margin: 0px;
+    /*padding: 0 calc(var(--cell-size) / 4);*/
+    text-align: center; /* Vertical alignment */
+    justify-content: center; /* Horizontal alignment */
+    white-space: pre;
+    font-family: var(--vscode-editor-font-family);
+    font-weight: var(--vscode-editor-font-weight);
+    font-size: var(--vscode-editor-font-size);
+    display: inline-flex;
+    line-height: 2.5ch;
 }
 
 .hex-cell-value-header {
-  color: var(--vscode-symbolIcon-classForeground);
-  font-weight: bold;
-	/* display: flex; */
-  width: 2.5ch
+    color: var(--vscode-symbolIcon-classForeground);
+    font-weight: bold;
+    /* display: flex; */
+    width: 2.5ch;
 }
 
 .hex-cell-value {
-  user-select: text;
-  font-weight: bold;
-  width: 2.5ch;
+    user-select: text;
+    font-weight: bold;
+    width: 2.5ch;
 }
 
 .hex-cell-char-header {
-  color: var(--vscode-symbolIcon-classForeground);
-  font-weight: bold;
-	/* display: flex; */
-  width: 2.5ch
+    color: var(--vscode-symbolIcon-classForeground);
+    font-weight: bold;
+    /* display: flex; */
+    width: 2.5ch;
 }
 
 .hex-cell-char {
-  color: var(--vscode-textLink-activeForeground);
-  background-color: var(--vscode-textBlockQuote-background);
-  overflow: hidden;
-  width: 2.5ch;
+    color: var(--vscode-textLink-activeForeground);
+    background-color: var(--vscode-textBlockQuote-background);
+    overflow: hidden;
+    width: 2.5ch;
 }
 
 .hex-header-row {
-	display: flex;
-  font-weight: bold;
-  white-space: pre;
+    display: flex;
+    font-weight: bold;
+    white-space: pre;
 }
 
 .hex-data-row {
-	display: flex;
-  font-weight: bold;
-  white-space: pre;
+    display: flex;
+    font-weight: bold;
+    white-space: pre;
 }
 
 .hex-cell-address {
-	color: var(--vscode-editorLineNumber-activeForeground);
-  width: 18ch;
+    color: var(--vscode-editorLineNumber-activeForeground);
+    width: 18ch;
 }
 
 .hex-cell-invisible {
-  visibility: hidden;
+    visibility: hidden;
 }
 
 .hex-cell-value-dirty {
-  color: var(--vscode-editorWarning-foreground);
-  font-weight: lighter;
+    color: var(--vscode-editorWarning-foreground);
+    font-weight: lighter;
 }
 
 .hex-cell-value-changed {
-  /* color: var(--vscode-debugTokenExpression-name);
-  color: magenta;*/
-  color: var(--vscode-symbolIcon-classForeground);
-  color: var(--vscode-textLink-activeForeground);
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.hex-cell-char-changed {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
 }
 
 .popup {
-  position: fixed;
-  width: 4ch;
-  display: flex;
-  align-items: left;
-  z-index: 1000;
+    position: fixed;
+    width: 4ch;
+    display: flex;
+    align-items: left;
+    z-index: 1000;
 }
 
 .popup-background {
-  /* modal background fixed across whole screen */
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+    /* modal background fixed across whole screen */
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
 
-  /* semi-transparent black  */
-  background-color: var(--vscode-editor-background);
-  /* background-color: #000;*/
-  opacity: 0.75;
+    /* semi-transparent black  */
+    background-color: var(--vscode-editor-background);
+    /* background-color: #000;*/
+    opacity: 0.75;
 
-  /* z-index must be below .popup and above everything else  */
-  z-index: 900;
+    /* z-index must be below .popup and above everything else  */
+    z-index: 900;
 }
