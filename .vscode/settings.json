@@ -10,14 +10,19 @@
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
     "typescript.tsc.autoDetect": "off",
-    "cSpell.words": ["esbuild", "Memview"],
+    "cSpell.words": [
+        "esbuild",
+        "Memview",
+        "svgr"
+    ],
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": false,
+    "editor.formatOnSave": true,
     "html.format.wrapAttributesIndentSize": null,
     "C_Cpp.vcFormat.indent.caseContents": false,
     "editor.detectIndentation": false,
     "html.completion.attributeDefaultValue": "singlequotes",
     "prettier.jsxSingleQuote": true,
     "prettier.singleQuote": true,
-    "prettier.tabWidth": 4
+    "prettier.tabWidth": 4,
+    "editor.wordWrapColumn": 120
 }

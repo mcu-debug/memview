@@ -12,23 +12,30 @@ import {
 } from 'recoil';
 import { useEffect } from 'react';
 
-type OnCellChangeFunc = (address: bigint, val: number) => void;
+type OnCellChangeFunc = (
+    address: bigint,
+    byteOffset: number,
+    val: number
+) => void;
 interface IHexCell {
     address: bigint;
-    value: number;
+    byteOffset: number;
     dirty: boolean;
     onChange?: OnCellChangeFunc;
 }
 
 export function HexCellValue(props: IHexCell): JSX.Element {
-    const [frozen, _setFrozen] = useRecoilState<boolean>(frozenState);
-    const [value, setValue] = React.useState(props.value);
+    const inRange = addrInRange(props.address, props.byteOffset);
+    const val = inRange ? myGlobals.bytes[props.byteOffset] : -1;
+    const [frozen] = useRecoilState<boolean>(frozenState);
+    const [initValue] = React.useState(val);
+    const [value, setValue] = React.useState(val);
 
     const classNames = () => {
         return (
             'hex-cell hex-cell-value' +
             (props.dirty || frozen ? ' hex-cell-value-dirty' : '') +
-            (props.value !== value ? ' hex-cell-value-changed' : '')
+            (initValue !== value ? ' hex-cell-value-changed' : '')
         );
     };
 
@@ -45,10 +52,11 @@ export function HexCellValue(props: IHexCell): JSX.Element {
         }
         const intVal = parseInt(val, 16);
         if (value !== intVal) {
-            if (props.onChange) {
-                props.onChange(props.address, intVal);
-            }
             setValue(intVal);
+            myGlobals.bytes[props.byteOffset] = intVal;
+            if (props.onChange) {
+                props.onChange(props.address, props.byteOffset, intVal);
+            }
         }
     };
 
@@ -87,13 +95,13 @@ export function HexCellValue(props: IHexCell): JSX.Element {
     };
 
     const onPopupDone = (v: string | undefined) => {
-        if (v != null) {
+        if (typeof v === 'string') {
             onValueChanged(v);
         }
     };
 
     const valueStr = () => {
-        return value < 0 ? '--' : hexValuesLookup[(value >>> 0) & 0xff];
+        return value >= 0 ? hexValuesLookup[(value >>> 0) & 0xff] : '~~';
     };
 
     const editable = () => {
@@ -128,11 +136,14 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({ address }) => {
 
 export const HexCellChar: React.FunctionComponent<{
     address: bigint;
-    val: number;
-}> = ({ val }) => {
+    byteOffset: number;
+}> = ({ address, byteOffset }) => {
     const classNames = 'hex-cell hex-cell-char';
     // const id = `hex-cell-char-${address}`;
-    const valueStr = charCodesLookup[(val >>> 0) & 0xff];
+    const val = addrInRange(address, byteOffset)
+        ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff
+        : -1;
+    const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
     return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -206,78 +217,87 @@ interface IHexDataRow {
     address: bigint;
     byteOffset: number;
     dirty: boolean;
-    mask: number;
     onChange?: OnCellChangeFunc;
 }
 
-export function HexDataRow(props: IHexDataRow): JSX.Element {
-    const classNames = 'hex-data-row';
-    const values = [];
-    const chars = [];
-    for (let ix = 0; ix < 16; ix++) {
-        const val =
-            myGlobals.bytes && props.mask & (1 << ix)
-                ? myGlobals.bytes[props.byteOffset + ix]
-                : -1;
-        const ixx = BigInt(ix);
-        values.push(
-            <HexCellValue
-                key={ix + 2}
-                address={props.address + ixx}
-                value={val}
-                dirty={props.dirty}
-                onChange={props.onChange}
-            />
+interface IHexDataRowState {
+    counter: number;
+}
+
+export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
+    constructor(public props: IHexDataRow) {
+        super(props);
+        this.state = { counter: 0 };
+    }
+
+    private rowChanged(address: bigint, byteOffset: number, newVal: number) {
+        this.setState({ counter: this.state.counter + 1 }); // Force an update
+        if (this.props.onChange) {
+            this.props.onChange(address, byteOffset, newVal);
+        }
+    }
+
+    render() {
+        const classNames = 'hex-data-row';
+        const values = [];
+        const chars = [];
+        for (let ix = 0; ix < 16; ix++) {
+            const addr = this.props.address + BigInt(ix);
+            const offset = this.props.byteOffset + ix;
+            values.push(
+                <HexCellValue
+                    key={ix + 2}
+                    address={addr}
+                    byteOffset={offset}
+                    dirty={this.props.dirty}
+                    onChange={this.rowChanged.bind(this)}
+                />
+            );
+            chars.push(
+                <HexCellChar address={addr} byteOffset={offset} key={ix + 18} />
+            );
+        }
+        const gap = (
+            <HexCellEmpty
+                length={1}
+                fillChar='.'
+                cls='hex-cell-invisible'
+            ></HexCellEmpty>
         );
-        chars.push(
-            <HexCellChar
-                address={props.address + ixx}
-                val={val}
-                key={ix + 18}
-            />
+        return (
+            <div className={classNames}>
+                <HexCellAddress key={1} address={this.props.address} />
+                <div>
+                    {values}
+                    {gap}
+                    {chars}
+                </div>
+            </div>
         );
     }
-    const gap = (
-        <HexCellEmpty
-            length={1}
-            fillChar='.'
-            cls='hex-cell-invisible'
-        ></HexCellEmpty>
-    );
-    return (
-        <div className={classNames}>
-            <HexCellAddress key={1} address={props.address} />
-            <div>
-                {values}
-                {gap}
-                {chars}
-            </div>
-        </div>
-    );
 }
 
 export interface IHexTable {
     address: bigint; // Address of first byte ie. bytes[byteOffset];
-    byteOffset: number;
-    numBytes: number; // Must be a multiple of 16
+    byteStart: number;
+    numBytes: number;
     dirty: boolean;
     onChange?: OnCellChangeFunc;
 }
 
 export function HexTable(props: IHexTable): JSX.Element {
-    const numBytes = (props.numBytes / 16) * 16;
-    const endAddr = props.address + BigInt(numBytes);
     const header = <HexHeaderRow key='h' address={props.address} />;
     const rows = [];
-    let offset = props.byteOffset;
-    for (let addr = props.address; addr < endAddr; addr += 16n, offset += 16) {
+    let offset = props.byteStart;
+    const startAddr = (props.address / 16n) * 16n;
+    const endAddr = ((props.address + BigInt(props.numBytes + 15)) / 16n) * 16n;
+    for (let addr = startAddr; addr < endAddr; addr += 16n, offset += 16) {
         rows.push(
             <HexDataRow
                 key={offset}
                 address={addr}
                 byteOffset={offset}
                 dirty={props.dirty}
-                mask={0xffff}
                 onChange={props.onChange}
             />
         );
@@ -293,7 +313,7 @@ export function HexTable(props: IHexTable): JSX.Element {
             ></PopupHexCellEdit>
         </div>
     );
-    console.log(`Toplevel:render ${timer.deltaMs()}ms`);
+    console.log(`Top-level:render ${timer.deltaMs()}ms`);
     return ret;
 }
 
@@ -310,7 +330,7 @@ interface IHexCellEditState {
 }
 // This is a modification of what I found here
 // https://jasonwatmore.com/post/2018/01/23/react-custom-modal-window-dialog-box
-export class PopupHexCellEdit extends React.Component<
+export class PopupHexCellEdit extends React.PureComponent<
     IHexCellEditProps,
     IHexCellEditState
 > {
@@ -346,13 +366,17 @@ export class PopupHexCellEdit extends React.Component<
                 let elt = PopupHexCellEdit.globalModel?.textInput?.current;
                 if (!elt) {
                     console.error('Could not find textInput ref');
-                    elt = document.getElementById(PopupHexCellEdit.inputElementId) as HTMLInputElement;
+                    elt = document.getElementById(
+                        PopupHexCellEdit.inputElementId
+                    ) as HTMLInputElement;
                 }
                 if (elt) {
                     elt.focus();
                     elt.select();
                 } else {
-                    console.error('Could not find textInput in document either');
+                    console.error(
+                        'Could not find textInput in document either'
+                    );
                 }
             }, 10);
             document.addEventListener(
@@ -482,15 +506,65 @@ export class PopupHexCellEdit extends React.Component<
     }
 }
 
+const odStyleChars = [
+    'nul',
+    'soh',
+    'stx',
+    'etx',
+    'eot',
+    'enq',
+    'ack',
+    'bel',
+    'bs',
+    'ht',
+    'nl',
+    'vt',
+    'ff',
+    'cr',
+    'so',
+    'si',
+    'dle',
+    'dc1',
+    'dc2',
+    'dc3',
+    'dc4',
+    'nak',
+    'syn',
+    'etb',
+    'can',
+    'em',
+    'sub',
+    'esc',
+    'fs',
+    'gs',
+    'rs',
+    'us',
+    'sp'
+];
+
 const charCodesLookup: string[] = [];
 const hexValuesLookup: string[] = [];
 for (let byte = 0; byte <= 255; byte++) {
     const v =
         byte <= 32 || (byte >= 127 && byte <= 159)
-            ? '.'
+            ? odStyleChars[byte]
             : String.fromCharCode(byte);
     charCodesLookup.push(v);
     hexValuesLookup.push(byte.toString(16).padStart(2, '0'));
+}
+
+function addrInRange(addr: bigint, byteOffset: number): boolean {
+    // TODO: handle unsigned bigint case. Not sure if the high bit is set
+    if (byteOffset >= myGlobals.bytes?.length) {
+        return false;
+    }
+    if (addr < myGlobals.minAddress) {
+        return false;
+    }
+    if (myGlobals.maxAddress !== undefined && addr > myGlobals.maxAddress) {
+        return false;
+    }
+    return true;
 }
 
 /*

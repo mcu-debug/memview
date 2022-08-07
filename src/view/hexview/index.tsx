@@ -14,6 +14,8 @@ try {
         myGlobals.bytes = new Uint8Array(opts.bytes.data);
         // console.log(`${Object.prototype.toString.call(opts.bytes)}`);
         // console.log(myGlobals.bytes.length);
+        myGlobals.minAddress = 0n;
+        myGlobals.maxAddress = BigInt(myGlobals.bytes.length - 1);
     } else {
         console.error('No initial data from vscode. Using random bytes');
     }
@@ -27,6 +29,8 @@ if (!myGlobals.bytes) {
         bytes[ix] = Math.floor(Math.random() * 255) & 0xff;
     }
     myGlobals.bytes = bytes;
+    myGlobals.minAddress = 0n;
+    myGlobals.maxAddress = BigInt(myGlobals.bytes.length - 1);
 }
 
 /*
@@ -42,8 +46,8 @@ const timer = new Utils.Timekeeper();
 ReactDOM.render(
     <RecoilRoot>
         <HexTable
-            address={0n}
-            byteOffset={0}
+            address={myGlobals.minAddress}
+            byteStart={0}
             numBytes={myGlobals.bytes.length}
             dirty={false}
         />

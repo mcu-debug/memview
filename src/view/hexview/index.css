@@ -31,13 +31,14 @@
   color: var(--vscode-symbolIcon-classForeground);
   font-weight: bold;
 	/* display: flex; */
-  width: 2ch
+  width: 2.5ch
 }
 
 .hex-cell-char {
   color: var(--vscode-textLink-activeForeground);
   background-color: var(--vscode-textBlockQuote-background);
-  width: 2ch;
+  overflow: hidden;
+  width: 2.5ch;
 }
 
 .hex-header-row {

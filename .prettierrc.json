@@ -3,5 +3,6 @@
     "tabWidth": 4,
     "semi": true,
     "singleQuote": true,
-    "jsxSingleQuote": true
+    "jsxSingleQuote": true,
+    "max_line_length": 120
   }

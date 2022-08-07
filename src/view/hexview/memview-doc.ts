@@ -18,7 +18,7 @@ export class MemviewDocument implements vscode.CustomDocument {
         memoryReference: '0x0',
         isFixedSize: false,
         initialSize: 1024,
-        bytes: new Uint8Array(0),
+        bytes: Buffer.alloc(0),
         fsPath: ''
     };
     constructor(public uri: vscode.Uri) {
