@@ -10,34 +10,34 @@
     font-weight: var(--vscode-editor-font-weight);
     font-size: var(--vscode-editor-font-size);
     display: inline-flex;
-    line-height: 2.5ch;
+    line-height: 3ch;
 }
 
 .hex-cell-value-header {
     color: var(--vscode-symbolIcon-classForeground);
     font-weight: bold;
     /* display: flex; */
-    width: 2.5ch;
+    width: 3ch;
 }
 
 .hex-cell-value {
     user-select: text;
     font-weight: bold;
-    width: 2.5ch;
+    width: 3ch;
 }
 
 .hex-cell-char-header {
     color: var(--vscode-symbolIcon-classForeground);
     font-weight: bold;
     /* display: flex; */
-    width: 2.5ch;
+    width: 3ch;
 }
 
 .hex-cell-char {
     color: var(--vscode-textLink-activeForeground);
     background-color: var(--vscode-textBlockQuote-background);
     overflow: hidden;
-    width: 2.5ch;
+    width: 3ch;
 }
 
 .hex-header-row {
