@@ -10,7 +10,7 @@
     font-weight: var(--vscode-editor-font-weight);
     font-size: var(--vscode-editor-font-size);
     display: inline-flex;
-    line-height: 3ch;
+    line-height: 2.5ch;
 }
 
 .hex-cell-value-header {
@@ -22,6 +22,7 @@
 
 .hex-cell-value {
     user-select: text;
+    /* cursor: pointer;*/
     font-weight: bold;
     width: 3ch;
 }
