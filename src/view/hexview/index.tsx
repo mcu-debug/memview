@@ -5,6 +5,7 @@ import * as Utils from './utils';
 import { RecoilRoot } from 'recoil';
 import './index.css';
 import { HexTable } from './hex-elements';
+import { HexTableVirtual2 } from './hex-table-virtual2';
 
 // const vscode = window.acquireVsCodeApi();
 
@@ -45,9 +46,22 @@ declare global {
 */
 
 const timer = new Utils.Timekeeper();
+/*
 ReactDOM.render(
     <RecoilRoot>
         <HexTable
+            address={myGlobals.minAddress}
+            byteStart={0}
+            numBytes={myGlobals.bytes.length}
+            dirty={false}
+        />
+    </RecoilRoot>,
+    document.getElementById('root')
+);
+*/
+ReactDOM.render(
+    <RecoilRoot>
+        <HexTableVirtual2
             address={myGlobals.minAddress}
             byteStart={0}
             numBytes={myGlobals.bytes.length}

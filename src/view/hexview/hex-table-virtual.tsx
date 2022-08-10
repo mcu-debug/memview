@@ -41,7 +41,7 @@ export const ExampleWrapper: React.FC<{
     loadNextPage: () => void;
 }> = ({ hasNextPage, isNextPageLoading, header, items, loadNextPage }) => {
     // If there are more items to be loaded then add an extra row to hold a loading indicator.
-    const itemCount = hasNextPage ? items.length + 2 : items.length + 1;
+    const itemCount = hasNextPage ? items.length + 1 : items.length;
 
     // Only load 1 page of items at a time.
     // Pass an empty callback to InfiniteLoader in case it asks us to load more than once.
@@ -50,15 +50,22 @@ export const ExampleWrapper: React.FC<{
 
     // Every row is loaded except for our loading indicator row.
     const isItemLoaded = (index: number) => {
-        return index <= items.length;
+        return !hasNextPage || index < items.length;
     };
 
     // Render an item or a loading indicator.
     const Item = (args: any) => {
-        console.log('Item request', args);
         const { index, style } = args;
+        // console.log('Item request', index);
         if (!isItemLoaded(index)) {
             return <div style={style}>Loading...</div>;
+        } else {
+            const props = items[index];
+            return (
+                <HexDataRow {...props} key={props.address.toString()} style={style}></HexDataRow>
+            );
+        }
+        /*
         } else if (index === 0) {
             return <HexHeaderRow {...header} key={'header'} style={style}></HexHeaderRow>;
         } else if (index <= items.length) {
@@ -70,6 +77,7 @@ export const ExampleWrapper: React.FC<{
             console.log(`Invalid index ${index}. Valid range is 0..${items.length}`);
             return null;
         }
+        */
     };
 
     const onResize = (args: any) => {
@@ -80,6 +88,7 @@ export const ExampleWrapper: React.FC<{
         height: window.innerHeight,
         width: window.innerWidth
     });
+
     React.useEffect(() => {
         let to: NodeJS.Timeout | undefined = undefined;
         function handleResize() {
@@ -103,24 +112,22 @@ export const ExampleWrapper: React.FC<{
             isItemLoaded={isItemLoaded}
             itemCount={itemCount}
             loadMoreItems={loadMoreItems}
+            threshold={15}
+            minimumBatchSize={16}
         >
             {({ onItemsRendered, ref }) => (
-                <AutoSizer onResize={onResize}>
-                    {({ width }) => (
-                        <FixedSizeList
-                            className='List'
-                            itemCount={itemCount}
-                            itemSize={estimatedRowHeight}
-                            onItemsRendered={onItemsRendered}
-                            ref={ref}
-                            layout='vertical'
-                            height={window.innerHeight * 2}
-                            width={width}
-                        >
-                            {Item}
-                        </FixedSizeList>
-                    )}
-                </AutoSizer>
+                <FixedSizeList
+                    className='List'
+                    itemCount={itemCount}
+                    itemSize={estimatedRowHeight}
+                    onItemsRendered={onItemsRendered}
+                    ref={ref}
+                    layout='vertical'
+                    height={window.innerHeight * 2}
+                    width={'100%'}
+                >
+                    {Item}
+                </FixedSizeList>
             )}
         </InfiniteLoader>
     );
@@ -188,7 +195,7 @@ export class HexTableVirtual extends React.PureComponent<IHexTable, IHexTableSta
     _loadNextPage = (...args: any) => {
         const [startIndex, stopIndex] = args;
         console.log('loadNextPage', JSON.stringify(args), startIndex, stopIndex);
-        let topIndex = stopIndex - 1;
+        let topIndex = stopIndex;
         if (topIndex < this.state.items.length) {
             return;
         }
@@ -206,7 +213,7 @@ export class HexTableVirtual extends React.PureComponent<IHexTable, IHexTableSta
                 };
                 console.log('Updating state to', update);
                 this.setState(update);
-            }, 5);
+            }, 10);
         });
     };
 

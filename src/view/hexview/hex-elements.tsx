@@ -12,7 +12,7 @@ import {
     useSetRecoilState
 } from 'recoil';
 
-type OnCellChangeFunc = (address: bigint, byteOffset: number, val: number) => void;
+export type OnCellChangeFunc = (address: bigint, byteOffset: number, val: number) => void;
 interface IHexCell {
     address: bigint;
     byteOffset: number;
@@ -364,8 +364,9 @@ export const HexCellValueHeader: React.FunctionComponent<{
     return <span className={classNames}>{valueStr}</span>;
 };
 
-interface IHexHeaderRow {
+export interface IHexHeaderRow {
     address: bigint;
+    style?: any;
 }
 
 export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
@@ -396,11 +397,12 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
     );
 }
 
-interface IHexDataRow {
+export interface IHexDataRow {
     address: bigint;
     byteOffset: number;
     dirty: boolean;
     onChange?: OnCellChangeFunc;
+    style?: any;
 }
 
 interface IHexDataRowState {
