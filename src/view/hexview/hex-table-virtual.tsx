@@ -1,8 +1,10 @@
-import * as React from 'react';
-import { FixedSizeList } from 'react-window';
-import InfiniteLoader from 'react-window-infinite-loader';
-import AutoSizer from 'react-virtualized-auto-sizer';
-// import 'react-virtualized/styles.css'; // only needs to be imported once
+// Originally from https://codepen.io/abidibo/pen/dwgLJo
+import React from 'react';
+import clsx from 'clsx';
+import './example.css';
+import { Table, Column, AutoSizer, InfiniteLoader, List } from 'react-virtualized';
+import { faker } from '@faker-js/faker';
+import 'react-virtualized/styles.css';
 import {
     IHexDataRow,
     IHexHeaderRow,
@@ -11,167 +13,123 @@ import {
     HexHeaderRow,
     OnCellChangeFunc
 } from './hex-elements';
-import { myGlobals } from './globals';
+import { myGlobals, vscodeGetState, vscodeSetState } from './globals';
+
+const generateRandomItem = (idx: number) => ({
+    id: idx,
+    name: faker.name.fullName(),
+    email: faker.internet.email()
+});
 
 interface IHexTableState {
-    hasNextPage: boolean;
-    isNextPageLoading: boolean;
     header: IHexHeaderRow;
     items: IHexDataRow[];
+    rowHeight: number;
+    scrollTop: number;
 }
 
-const estimatedRowHeight = 30;
-const maxNumRows = (1024 * 1024) / 16; // 1Meg bytes
+function getVscodeScrollTop(): number {
+    const v = vscodeGetState<number>('scrollTop');
+    return v || 0;
+}
 
-export const ExampleWrapper: React.FC<{
-    // Are there more items to load?
-    // (This information comes from the most recent API request.)
-    hasNextPage: boolean;
+function setVscodeScrollTop(v: number) {
+    vscodeSetState<number>('scrollTop', v);
+}
 
-    // Are we currently loading a page of items?
-    // (This may be an in-flight flag in your Redux store for example.)
-    isNextPageLoading: boolean;
+function getVscodeRowHeight(): number {
+    const v = vscodeGetState<number>('rowHeight');
+    return v || 18;
+}
 
-    header: IHexHeaderRow;
+function setVscodeRowHeight(v: number) {
+    vscodeSetState<number>('rowHeight', v);
+}
 
-    // Array of items loaded so far.
-    items: IHexDataRow[];
-
-    // Callback function responsible for loading the next page of items.
-    loadNextPage: () => void;
-}> = ({ hasNextPage, isNextPageLoading, header, items, loadNextPage }) => {
-    // If there are more items to be loaded then add an extra row to hold a loading indicator.
-    const itemCount = hasNextPage ? items.length + 1 : items.length;
-
-    // Only load 1 page of items at a time.
-    // Pass an empty callback to InfiniteLoader in case it asks us to load more than once.
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const loadMoreItems = isNextPageLoading ? () => {} : loadNextPage;
-
-    // Every row is loaded except for our loading indicator row.
-    const isItemLoaded = (index: number) => {
-        return !hasNextPage || index < items.length;
-    };
-
-    // Render an item or a loading indicator.
-    const Item = (args: any) => {
-        const { index, style } = args;
-        // console.log('Item request', index);
-        if (!isItemLoaded(index)) {
-            return <div style={style}>Loading...</div>;
-        } else {
-            const props = items[index];
-            return (
-                <HexDataRow {...props} key={props.address.toString()} style={style}></HexDataRow>
-            );
-        }
-        /*
-        } else if (index === 0) {
-            return <HexHeaderRow {...header} key={'header'} style={style}></HexHeaderRow>;
-        } else if (index <= items.length) {
-            const props = items[index - 1];
-            return (
-                <HexDataRow {...props} key={props.address.toString()} style={style}></HexDataRow>
-            );
-        } else {
-            console.log(`Invalid index ${index}. Valid range is 0..${items.length}`);
-            return null;
-        }
-        */
-    };
-
-    const onResize = (args: any) => {
-        console.log('AutoSizer.onResize', args);
-    };
-
-    const [dimensions, setDimensions] = React.useState({
-        height: window.innerHeight,
-        width: window.innerWidth
-    });
-
-    React.useEffect(() => {
-        let to: NodeJS.Timeout | undefined = undefined;
-        function handleResize() {
-            if (to) {
-                clearTimeout(to);
-            }
-            to = setTimeout(() => {
-                console.log('Window resize event', window.innerHeight, window.innerWidth);
-                setDimensions({
-                    height: window.innerHeight,
-                    width: window.innerWidth
-                });
-                to = undefined;
-            }, 100);
-        }
-        window.addEventListener('resize', handleResize);
-    });
-
-    return (
-        <InfiniteLoader
-            isItemLoaded={isItemLoaded}
-            itemCount={itemCount}
-            loadMoreItems={loadMoreItems}
-            threshold={15}
-            minimumBatchSize={16}
-        >
-            {({ onItemsRendered, ref }) => (
-                <FixedSizeList
-                    className='List'
-                    itemCount={itemCount}
-                    itemSize={estimatedRowHeight}
-                    onItemsRendered={onItemsRendered}
-                    ref={ref}
-                    layout='vertical'
-                    height={window.innerHeight * 2}
-                    width={'100%'}
-                >
-                    {Item}
-                </FixedSizeList>
-            )}
-        </InfiniteLoader>
-    );
-};
-
-export class HexTableVirtual extends React.PureComponent<IHexTable, IHexTableState> {
-    private header: IHexHeaderRow = { address: 0n };
+const estimatedRowHeight = getVscodeRowHeight();
+const maxNumRows = (1024 * 1024) / 16;
+export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> {
     private startAddr = 0n;
     private endAddr = 0n;
-    private lastAddrLoaded = 0n;
     private eof = false;
+    private loadMoreFunc = this.loadMore.bind(this);
+    private renderRowFunc = this.renderRow.bind(this);
+    private onScrollFunc = this.onScroll.bind(this);
+    private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
 
+    private promiseResolve: any;
     constructor(public props: IHexTable) {
         super(props);
-        this.updatePrivates();
-        const want = Math.round(window.innerHeight / estimatedRowHeight) + 20;
-        const items = this.loadMoreRows(want, []);
+
+        this.startAddr = (this.props.address / 16n) * 16n;
+        this.endAddr = ((this.props.address + BigInt(this.props.numBytes + 15)) / 16n) * 16n;
+        const want = Math.round(window.innerHeight / estimatedRowHeight) + 15;
+        const items = this.actuallyLoadMore(want);
         this.state = {
-            hasNextPage: true,
-            header: this.header,
-            isNextPageLoading: false,
-            items: items
+            header: { address: this.props.address },
+            items: items,
+            rowHeight: estimatedRowHeight,
+            scrollTop: getVscodeScrollTop()
         };
     }
 
-    private updatePrivates() {
-        this.header = { address: this.props.address };
-        this.startAddr = (this.props.address / 16n) * 16n;
-        this.endAddr = ((this.props.address + BigInt(this.props.numBytes + 15)) / 16n) * 16n;
+    private rowHeightDetected = false;
+    componentDidMount() {
+        // lineHeight
+        if (!this.lineHeightDetectTimer && !this.rowHeightDetected) {
+            this.lineHeightDetectTimer = setInterval(() => {
+                const elt = document.querySelector('.hex-cell-value');
+                if (elt) {
+                    const style = getComputedStyle(elt);
+                    const h = style.lineHeight;
+                    if (h && h.endsWith('px')) {
+                        const tmp = parseFloat(h);
+                        if (tmp !== this.state.rowHeight) {
+                            this.setState({ rowHeight: tmp });
+                            setVscodeRowHeight(tmp);
+                        }
+                    }
+                    clearInterval(this.lineHeightDetectTimer);
+                    this.lineHeightDetectTimer = undefined;
+                    // TODO: This should be set back to false when theme/fonts change
+                    this.rowHeightDetected = true;
+                }
+            }, 250);
+        }
     }
 
-    private loadMoreRows(stopIndex: number, previousItems: IHexDataRow[]): IHexDataRow[] {
-        console.log(
-            `loadMoreRows want index = ${stopIndex}, already have ${previousItems?.length}`
-        );
-        if (stopIndex < previousItems.length) {
-            console.log(`Returning early we already got index ${stopIndex}`);
-            return previousItems;
+    private scrollSettingTimeout: NodeJS.Timeout | undefined;
+    onScroll(args: { clientHeight: number; scrollHeight: number; scrollTop: number }) {
+        // We just remember the last top position to use next time we are mounted
+        this.setState({ scrollTop: args.scrollTop });
+
+        if (this.scrollSettingTimeout) {
+            clearTimeout(this.scrollSettingTimeout);
         }
-        const items = previousItems ? Array.from(previousItems) : [];
-        const nItems = items.length;
-        let addr = this.startAddr + BigInt(nItems * 16);
-        let offset = this.props.byteStart + nItems * 16;
-        for (let ix = nItems; ix <= stopIndex; ix++, offset += 16, addr = this.lastAddrLoaded) {
+        this.scrollSettingTimeout = setTimeout(() => {
+            setVscodeScrollTop(this.state.scrollTop);
+            this.scrollSettingTimeout = undefined;
+        }, 250);
+    }
+
+    loadMore(): Promise<any> {
+        // simulate a request
+        setTimeout(() => {
+            this.actuallyLoadMore();
+        }, 10);
+        // we need to return a promise
+        return new Promise((resolve, _reject) => {
+            //  Maybe we should have a set of promises or return old if called before previous one was done
+            this.promiseResolve = resolve;
+        });
+    }
+
+    actuallyLoadMore(want = 100): IHexDataRow[] {
+        const nOldItems = this.state?.items ? this.state.items.length : 0;
+        let addr = this.startAddr + BigInt(nOldItems * 16);
+        let offset = this.props.byteStart + nOldItems * 16;
+        const newItems: IHexDataRow[] = [];
+        for (let ix = 0; ix < want; ix++, offset += 16, addr += 16n) {
             if (addr >= this.endAddr || offset >= myGlobals.bytes.length) {
                 break;
             }
@@ -181,77 +139,109 @@ export class HexTableVirtual extends React.PureComponent<IHexTable, IHexTableSta
                 dirty: this.props.dirty,
                 onChange: this.props.onChange
             };
-            items.push(tmp);
-            this.lastAddrLoaded = addr + 16n;
+            newItems.push(tmp);
         }
-        if (addr >= this.endAddr || offset >= myGlobals.bytes.length) {
-            this.eof = true;
+
+        // Cause the minimum of disturbance
+        const allItems = !nOldItems // No previous items
+            ? newItems
+            : newItems.length // Something to concat
+            ? this.state.items.concat(newItems)
+            : this.state.items; // Nothing changed
+        if (this.promiseResolve) {
+            this.setState({ items: allItems });
+            // resolve the promise after data where fetched
+            this.promiseResolve();
+            this.promiseResolve = undefined;
         }
-        console.log(`loadMoreRows want index = ${stopIndex}, now have ${items.length}`);
-        console.log(items[items.length - 1]);
-        return items;
+        this.eof =
+            addr >= this.endAddr ||
+            offset >= myGlobals.bytes.length ||
+            allItems.length >= maxNumRows;
+        return allItems;
     }
 
-    _loadNextPage = (...args: any) => {
-        const [startIndex, stopIndex] = args;
-        console.log('loadNextPage', JSON.stringify(args), startIndex, stopIndex);
-        let topIndex = stopIndex;
-        if (topIndex < this.state.items.length) {
-            return;
+    private showScrollingPlaceholder = false;
+    renderRow(args: any) {
+        // console.log('renderRow: ', args);
+        const { index, isScrolling, key, style } = args;
+        const classNames = 'row isScrollingPlaceholder';
+        if (this.showScrollingPlaceholder && isScrolling) {
+            return (
+                <div className={classNames} key={key} style={style}>
+                    Scrolling...
+                </div>
+            );
         }
-        const delta = this.state.items.length - topIndex;
-        if (delta < 32) {
-            topIndex += 32 - delta;
-        }
-        this.setState({ isNextPageLoading: true }, () => {
-            setTimeout(() => {
-                const items = this.loadMoreRows(topIndex, this.state.items);
-                const update = {
-                    hasNextPage: !this.eof && this.state.items.length < maxNumRows,
-                    isNextPageLoading: false,
-                    items: items
-                };
-                console.log('Updating state to', update);
-                this.setState(update);
-            }, 10);
-        });
-    };
-
-    _loadNextPagex = (...args: any) => {
-        console.log('loadNextPage', ...args);
-        this.setState({ isNextPageLoading: true }, () => {
-            setTimeout(() => {
-                const items = new Array(10).fill(true).map((v, i) => {
-                    // prettier-ignore
-                    return ({ name: `Row ${i + this.state.items.length}`});
-                });
-                this.setState((state) => ({
-                    hasNextPage: state.items.length < 100,
-                    isNextPageLoading: false,
-                    items: items as any
-                    /*
-                    // prettier-ignore
-                    items: [...state.items].concat(
-                        new Array(10).fill(true).map(() => ({ name: name.findName() }))
-                    )
-                    */
-                }));
-            }, 2500);
-        });
-    };
+        const item = this.state.items[index];
+        item.style = style;
+        const ret = <HexDataRow {...item} key={key}></HexDataRow>;
+        // console.log(ret);
+        return ret;
+    }
 
     render() {
-        const { hasNextPage, isNextPageLoading, items, header } = this.state;
         return (
-            <React.Fragment>
-                <ExampleWrapper
-                    hasNextPage={hasNextPage}
-                    isNextPageLoading={isNextPageLoading}
-                    header={header}
-                    items={items}
-                    loadNextPage={this._loadNextPage}
-                />
-            </React.Fragment>
+            <div className='container'>
+                <HexHeaderRow address={this.props.address}></HexHeaderRow>
+                <InfiniteLoader
+                    isRowLoaded={({ index }) => !!this.state.items[index]}
+                    loadMoreRows={this.loadMoreFunc}
+                    rowCount={maxNumRows}
+                >
+                    {({ onRowsRendered, registerChild }) => (
+                        <AutoSizer>
+                            {({ width }) => (
+                                <List
+                                    ref={registerChild}
+                                    onRowsRendered={onRowsRendered}
+                                    height={window.innerHeight}
+                                    width={width}
+                                    overscanRowCount={30}
+                                    rowCount={this.state.items.length}
+                                    rowHeight={this.state.rowHeight}
+                                    rowRenderer={this.renderRowFunc}
+                                    scrollTop={this.state.scrollTop}
+                                    onScroll={this.onScrollFunc}
+                                />
+                            )}
+                        </AutoSizer>
+                    )}
+                </InfiniteLoader>
+            </div>
         );
     }
 }
+
+/*
+html {
+   height: 100%;
+}
+
+body {
+   background: #633;
+   color: #fff;
+   display: flex;
+   min-height: 100%;
+}
+
+#root {
+   flex: 1;
+}
+
+.container {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   width: 98%;
+}
+
+.table-row-xxx {
+   border-top: 1px solid rgba(255, 255, 255, .2);
+}
+
+.ReactVirtualized__Table__headerRow {
+   border: 0;
+   color: #ff0;
+}
+*/

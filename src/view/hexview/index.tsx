@@ -5,7 +5,7 @@ import * as Utils from './utils';
 import { RecoilRoot } from 'recoil';
 import './index.css';
 import { HexTable } from './hex-elements';
-import { HexTableVirtual2 } from './hex-table-virtual2';
+import { HexTableVirtual } from './hex-table-virtual';
 
 // const vscode = window.acquireVsCodeApi();
 
@@ -62,7 +62,7 @@ ReactDOM.render(
 
 ReactDOM.render(
     <RecoilRoot>
-        <HexTableVirtual2
+        <HexTableVirtual
             address={myGlobals.minAddress}
             byteStart={0}
             numBytes={myGlobals.bytes.length}
