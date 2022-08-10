@@ -403,6 +403,7 @@ export interface IHexDataRow {
     dirty: boolean;
     onChange?: OnCellChangeFunc;
     style?: any;
+    cls?: string;
 }
 
 interface IHexDataRowState {
@@ -424,7 +425,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     render() {
-        const classNames = 'hex-data-row';
+        const classNames = 'hex-data-row ' + (this.props.cls || '');
         const values = [];
         const chars = [];
         for (let ix = 0; ix < 16; ix++) {
@@ -443,7 +444,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         }
         const gap = <HexCellEmpty length={1} fillChar='.' cls='hex-cell-invisible'></HexCellEmpty>;
         return (
-            <div className={classNames}>
+            <div className={classNames} style={this.props.style || ''}>
                 <HexCellAddress key={1} address={this.props.address} />
                 <div>
                     {values}

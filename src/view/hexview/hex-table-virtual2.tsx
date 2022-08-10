@@ -13,6 +13,7 @@ import {
     HexHeaderRow,
     OnCellChangeFunc
 } from './hex-elements';
+import { myGlobals, vscodeGetState, vscodeSetState } from './globals';
 
 const generateRandomItem = (idx: number) => ({
     id: idx,
@@ -21,50 +22,149 @@ const generateRandomItem = (idx: number) => ({
 });
 
 interface IHexTableState {
-    items: any[];
+    header: IHexHeaderRow;
+    items: IHexDataRow[];
+    rowHeight: number;
+    scrollTop: number;
 }
 
+function getVscodeScrollTop(): number {
+    const v = vscodeGetState<number>('scrollTop');
+    return v || 0;
+}
+
+function setVscodeScrollTop(v: number) {
+    vscodeSetState<number>('scrollTop', v);
+}
+
+function getVscodeRowHeight(): number {
+    const v = vscodeGetState<number>('rowHeight');
+    return v || 18;
+}
+
+function setVscodeRowHeight(v: number) {
+    vscodeSetState<number>('rowHeight', v);
+}
+
+const estimatedRowHeight = getVscodeRowHeight();
+const maxNumRows = (1024 * 1024) / 16;
 export class HexTableVirtual2 extends React.Component<IHexTable, IHexTableState> {
+    private startAddr = 0n;
+    private endAddr = 0n;
+    private eof = false;
+    private loadMoreFunc = this.loadMore.bind(this);
+    private renderRowFunc = this.renderRow.bind(this);
+    private onScrollFunc = this.onScroll.bind(this);
+    private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
+
     private promiseResolve: any;
     constructor(public props: IHexTable) {
         super(props);
-        this.loadMore = this.loadMore.bind(this);
-        // fake data
-        const items = [];
-        for (let i = 0, l = 100; i < l; i++) {
-            items.push(generateRandomItem(i));
-        }
+
+        console.log('In constructor');
+        this.startAddr = (this.props.address / 16n) * 16n;
+        this.endAddr = ((this.props.address + BigInt(this.props.numBytes + 15)) / 16n) * 16n;
+        const want = Math.round(window.innerHeight / estimatedRowHeight) + 15;
+        const items = this.actuallyLoadMore(want);
         this.state = {
-            items: items
+            header: { address: this.props.address },
+            items: items,
+            rowHeight: estimatedRowHeight,
+            scrollTop: getVscodeScrollTop()
         };
     }
 
-    loadMore() {
+    private rowHeightDetected = false;
+    componentDidMount() {
+        // lineHeight
+        if (!this.lineHeightDetectTimer && !this.rowHeightDetected) {
+            this.lineHeightDetectTimer = setInterval(() => {
+                const elt = document.querySelector('.hex-cell-value');
+                if (elt) {
+                    const style = getComputedStyle(elt);
+                    const h = style.lineHeight;
+                    if (h && h.endsWith('px')) {
+                        const tmp = parseFloat(h);
+                        if (tmp !== this.state.rowHeight) {
+                            this.setState({ rowHeight: tmp });
+                            setVscodeRowHeight(tmp);
+                        }
+                    }
+                    clearInterval(this.lineHeightDetectTimer);
+                    this.lineHeightDetectTimer = undefined;
+                    // TODO: This should be set back to false when theme/fonts change
+                    this.rowHeightDetected = true;
+                }
+            }, 250);
+        }
+    }
+
+    private scrollSettingTimeout: NodeJS.Timeout | undefined;
+    onScroll(args: { clientHeight: number; scrollHeight: number; scrollTop: number }) {
+        // We just remember the last top position to use next time we are mounted
+        this.setState({ scrollTop: args.scrollTop });
+
+        if (this.scrollSettingTimeout) {
+            clearTimeout(this.scrollSettingTimeout);
+        }
+        this.scrollSettingTimeout = setTimeout(() => {
+            setVscodeScrollTop(this.state.scrollTop);
+            this.scrollSettingTimeout = undefined;
+        }, 250);
+    }
+
+    loadMore(): Promise<any> {
         // simulate a request
         setTimeout(() => {
             this.actuallyLoadMore();
-        }, 100);
+        }, 10);
         // we need to return a promise
         return new Promise((resolve, _reject) => {
+            //  Maybe we should have a set of promises or return old if called before previous one was done
             this.promiseResolve = resolve;
         });
     }
 
-    actuallyLoadMore() {
-        // fake new data
-        const newItems = [];
-        const s = this.state.items.length + 1;
-        for (let i = 0, l = 100; i < l; i++) {
-            newItems.push(generateRandomItem(s + i));
+    actuallyLoadMore(want = 100): IHexDataRow[] {
+        const nOldItems = this.state?.items ? this.state.items.length : 0;
+        let addr = this.startAddr + BigInt(nOldItems * 16);
+        let offset = this.props.byteStart + nOldItems * 16;
+        const newItems: IHexDataRow[] = [];
+        for (let ix = 0; ix < want; ix++, offset += 16, addr += 16n) {
+            if (addr >= this.endAddr || offset >= myGlobals.bytes.length) {
+                break;
+            }
+            const tmp: IHexDataRow = {
+                address: addr,
+                byteOffset: offset,
+                dirty: this.props.dirty,
+                onChange: this.props.onChange
+            };
+            newItems.push(tmp);
         }
-        this.setState({ items: this.state.items.concat(newItems) });
-        // resolve the promise after data where fetched
-        this.promiseResolve();
+
+        // Cause the minimum of disturbance
+        const allItems = !nOldItems // No previous items
+            ? newItems
+            : newItems.length // Something to concat
+            ? this.state.items.concat(newItems)
+            : this.state.items; // Nothing changed
+        if (this.promiseResolve) {
+            this.setState({ items: allItems });
+            // resolve the promise after data where fetched
+            this.promiseResolve();
+            this.promiseResolve = undefined;
+        }
+        this.eof =
+            addr >= this.endAddr ||
+            offset >= myGlobals.bytes.length ||
+            allItems.length >= maxNumRows;
+        return allItems;
     }
 
     private showScrollingPlaceholder = false;
     renderRow(args: any) {
-        console.log('renderRow: ', args);
+        // console.log('renderRow: ', args);
         const { index, isScrolling, key, style } = args;
         const classNames = 'row isScrollingPlaceholder';
         if (this.showScrollingPlaceholder && isScrolling) {
@@ -75,27 +175,20 @@ export class HexTableVirtual2 extends React.Component<IHexTable, IHexTableState>
             );
         }
         const item = this.state.items[index];
-        console.log('Item: ', item);
-        const itemSpan = (str: string, width: number) => {
-            return <span style={{ width: `${width}ch` }}>{str}</span>;
-        };
-        return (
-            <div className={classNames} key={key} style={style}>
-                {itemSpan(item.id.toString(), 10)}
-                {itemSpan(item.name, 30)}
-                {itemSpan(item.email, 30)}
-            </div>
-        );
+        item.style = style;
+        const ret = <HexDataRow {...item} key={key}></HexDataRow>;
+        // console.log(ret);
+        return ret;
     }
-    private renderRowFunc = this.renderRow.bind(this);
 
     render() {
+        console.log('InRender....');
         return (
             <div className='container'>
                 <InfiniteLoader
                     isRowLoaded={({ index }) => !!this.state.items[index]}
-                    loadMoreRows={this.loadMore}
-                    rowCount={1000000}
+                    loadMoreRows={this.loadMoreFunc}
+                    rowCount={maxNumRows}
                 >
                     {({ onRowsRendered, registerChild }) => (
                         <AutoSizer>
@@ -107,83 +200,11 @@ export class HexTableVirtual2 extends React.Component<IHexTable, IHexTableState>
                                     width={width}
                                     overscanRowCount={30}
                                     rowCount={this.state.items.length}
-                                    rowHeight={30}
+                                    rowHeight={this.state.rowHeight}
                                     rowRenderer={this.renderRowFunc}
+                                    scrollTop={this.state.scrollTop}
+                                    onScroll={this.onScrollFunc}
                                 />
-                            )}
-                        </AutoSizer>
-                    )}
-                </InfiniteLoader>
-            </div>
-        );
-    }
-}
-
-export class HexTableVirtual2Table extends React.Component<IHexTable, IHexTableState> {
-    private promiseResolve: any;
-    constructor(public props: IHexTable) {
-        super(props);
-        this.loadMore = this.loadMore.bind(this);
-        // fake data
-        const items = [];
-        for (let i = 0, l = 100; i < l; i++) {
-            items.push(generateRandomItem(i));
-        }
-        this.state = {
-            items: items
-        };
-    }
-
-    loadMore() {
-        // simulate a request
-        setTimeout(() => {
-            this.actuallyLoadMore();
-        }, 100);
-        // we need to return a promise
-        return new Promise((resolve, _reject) => {
-            this.promiseResolve = resolve;
-        });
-    }
-
-    actuallyLoadMore() {
-        // fake new data
-        const newItems = [];
-        const s = this.state.items.length + 1;
-        for (let i = 0, l = 100; i < l; i++) {
-            newItems.push(generateRandomItem(s + i));
-        }
-        this.setState({ items: this.state.items.concat(newItems) });
-        // resolve the promise after data where fetched
-        this.promiseResolve();
-    }
-
-    render() {
-        return (
-            <div className='container'>
-                <h1>Infinite scrolling autosize table example </h1>
-                <InfiniteLoader
-                    isRowLoaded={({ index }) => !!this.state.items[index]}
-                    loadMoreRows={this.loadMore}
-                    rowCount={1000000}
-                >
-                    {({ onRowsRendered, registerChild }) => (
-                        <AutoSizer>
-                            {({ width }) => (
-                                <Table
-                                    ref={registerChild}
-                                    onRowsRendered={onRowsRendered}
-                                    rowClassName='table-row-xxx'
-                                    headerHeight={40}
-                                    width={width}
-                                    height={300}
-                                    rowHeight={40}
-                                    rowCount={this.state.items.length}
-                                    rowGetter={({ index }) => this.state.items[index]}
-                                >
-                                    <Column label='Id' dataKey='id' width={width * 0.2} />
-                                    <Column label='Name' dataKey='name' width={width * 0.4} />
-                                    <Column label='E.mail' dataKey='email' width={width * 0.4} />
-                                </Table>
                             )}
                         </AutoSizer>
                     )}

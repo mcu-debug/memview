@@ -51,3 +51,17 @@ export interface IMemviewDocumentOptions {
     isFixedSize?: boolean;
     initialSize?: number;
 }
+
+export function vscodeGetState<T>(item: string): T | undefined {
+    const state = myGlobals.vscode.getState();
+    if (state) {
+        return state[item] as T;
+    }
+    return undefined;
+}
+
+export function vscodeSetState<T>(item: string, v: T): void {
+    const state = { ...myGlobals.vscode.getState() };
+    state[item] = v;
+    myGlobals.vscode.setState(state);
+}

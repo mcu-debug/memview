@@ -59,6 +59,7 @@ ReactDOM.render(
     document.getElementById('root')
 );
 */
+
 ReactDOM.render(
     <RecoilRoot>
         <HexTableVirtual2

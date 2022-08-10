@@ -10,6 +10,7 @@
     font-weight: var(--vscode-editor-font-weight);
     font-size: var(--vscode-editor-font-size);
     display: inline-flex;
+    overflow-y: hidden;
     line-height: 2.5ch;
 }
 
@@ -109,8 +110,6 @@ html {
 }
 
 body {
-    background: #633;
-    color: #fff;
     display: flex;
     min-height: 100%;
 }
