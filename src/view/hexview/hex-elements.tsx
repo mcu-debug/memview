@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { myGlobals, frozenState } from './globals';
 import * as Utils from './utils';
-import { PopupHexCellEdit } from './popup-hex-cell-edit';
 import {
     RecoilRoot,
     atom,
@@ -211,110 +210,6 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     }
 }
 
-export function HexCellValue_Unused(props: IHexCell): JSX.Element {
-    const inRange = addrInRange(props.address, props.byteOffset);
-    const val = inRange ? myGlobals.bytes[props.byteOffset] : -1;
-    const origVal = inRange ? myGlobals.origBytes[props.byteOffset] : -1;
-    const [frozen] = useRecoilState<boolean>(frozenState);
-    const [value, setValue] = React.useState(val);
-
-    const classNames = () => {
-        return (
-            'hex-cell hex-cell-value' +
-            (props.dirty || frozen ? ' hex-cell-value-dirty' : '') +
-            (origVal !== value ? ' hex-cell-value-changed' : '')
-        );
-    };
-
-    const onValueChanged = (val: string) => {
-        val = val.trim().toLowerCase();
-        while (val.startsWith('0x')) {
-            val = val.substring(2);
-        }
-        while (val.length > 1 && val.startsWith('0')) {
-            val = val.substring(1);
-        }
-        if (val.length > 2 || val.length === 0 || /[0-9a-f]]/.test(val)) {
-            return;
-        }
-        const intVal = parseInt(val, 16);
-        if (value !== intVal) {
-            setValue(intVal);
-            myGlobals.bytes[props.byteOffset] = intVal;
-            if (props.onChange) {
-                props.onChange(props.address, props.byteOffset, intVal);
-            }
-        }
-    };
-
-    const handleClick = (event: any) => {
-        switch (event.detail) {
-            case 1: {
-                break;
-            }
-            case 2: {
-                openPopup(event);
-                break;
-            }
-            case 3: {
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    };
-
-    const openPopup = (event: any) => {
-        const props: IHexCellEditProps = {
-            trigger: false,
-            clientX: event.clientX,
-            clientY: event.clientY,
-            value: valueStr(),
-            callback: onPopupDone
-        };
-        try {
-            PopupHexCellEdit.open(event, props);
-        } catch (e) {
-            console.log(`popup exception ${e}`);
-            throw e;
-        }
-    };
-
-    const onPopupDone = (v: string | undefined) => {
-        if (typeof v === 'string') {
-            onValueChanged(v);
-        }
-    };
-
-    const valueStr = () => {
-        return value >= 0 ? hexValuesLookup[(value >>> 0) & 0xff] : '~~';
-    };
-
-    const editable = () => {
-        return !frozen && !myGlobals.isReadonly;
-    };
-
-    const onChange = (ev: any) => {
-        console.log(ev.type + ' ' + Object.getOwnPropertyNames(ev).join(', '));
-        console.log(ev.type + ' ' + Object.getOwnPropertyNames(ev.nativeEvent).join(', '));
-    };
-
-    return (
-        <span
-            tabIndex={0}
-            contentEditable={true}
-            suppressContentEditableWarning={true}
-            className={classNames()}
-            style={{ border: '1px' }}
-            onClick={editable() ? handleClick : undefined}
-            onInput={onChange}
-        >
-            {valueStr()}
-        </span>
-    );
-}
-
 export const HexCellAddress: React.FC<{ address: bigint }> = ({ address }) => {
     const classNames = 'hex-cell hex-cell-address';
     // const id = `hex-cell-address-${address}`;
@@ -487,7 +382,6 @@ export function HexTable(props: IHexTable): JSX.Element {
         <div id='hex-grid' className='hex-grid'>
             {header}
             <div className='hex-data-rows'>{rows}</div>
-            <PopupHexCellEdit {...PopupHexCellEdit.globalProps}></PopupHexCellEdit>
         </div>
     );
     console.log(`Top-level:render ${timer.deltaMs()}ms`);

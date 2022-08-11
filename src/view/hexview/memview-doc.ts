@@ -11,6 +11,7 @@ const KNOWN_SCHMES = {
 const KNOWN_SCHEMES_ARRAY = Object.values(KNOWN_SCHMES);
 
 export class MemviewDocument implements vscode.CustomDocument {
+    private disposables: vscode.Disposable[] | undefined = [];
     private sessionId: string | undefined;
     private options: IMemviewDocumentOptions = {
         uriString: '',
@@ -66,6 +67,18 @@ export class MemviewDocument implements vscode.CustomDocument {
             this.options.initialSize = this.options.bytes.length;
             this.options.isFixedSize = true;
         }
+    }
+
+    private provider: MemviewDocumentProvider | undefined;
+    private panel: vscode.WebviewPanel | undefined;
+    public setEditorHandles(p: MemviewDocumentProvider, webviewPanel: vscode.WebviewPanel) {
+        this.provider = p;
+        this.panel = webviewPanel;
+        this.panel.webview.onDidReceiveMessage(e => this.handleMessage(e), null, this.disposables);
+    }
+
+    public handleMessage(e: any) {
+        console.log(e);
     }
 
     dispose(): void {
@@ -132,12 +145,9 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
         webviewPanel.webview.options = {
             enableScripts: true,
         };
-        webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, memDoc);
-        webviewPanel.webview.onDidReceiveMessage(this.handleMessage.bind(this));
-    }
 
-    private handleMessage(e: any) {
-        console.log(e);
+        webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, memDoc);
+        memDoc.setEditorHandles(this, webviewPanel);
     }
 
     private getWebviewContent(webview: vscode.Webview, doc: MemviewDocument): string {

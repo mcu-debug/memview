@@ -36,15 +36,6 @@ if (!myGlobals.bytes) {
 
 myGlobals.origBytes = Uint8Array.from(myGlobals.bytes);
 
-/*
-declare global {
-  interface Window {
-    acquireVsCodeApi(): any;
-    initialData: string;
-  }
-}
-*/
-
 const timer = new Utils.Timekeeper();
 /*
 ReactDOM.render(
@@ -71,4 +62,6 @@ ReactDOM.render(
     </RecoilRoot>,
     document.getElementById('root')
 );
+
+myGlobals.vscode.postMessage({ type: 'started' });
 console.log(`HexTable:render ${timer.deltaMs()}ms`);

@@ -181,6 +181,9 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
     }
 
     render() {
+        // Use the parent windows height and subtract the header row and also a bit more so the
+        // never displays a scrollbar
+        const heightCalc = window.innerHeight - this.state.rowHeight - 2;
         return (
             <div className='container'>
                 <HexHeaderRow address={this.props.address}></HexHeaderRow>
@@ -190,12 +193,12 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
                     rowCount={maxNumRows}
                 >
                     {({ onRowsRendered, registerChild }) => (
-                        <AutoSizer>
+                        <AutoSizer disableHeight>
                             {({ width }) => (
                                 <List
                                     ref={registerChild}
                                     onRowsRendered={onRowsRendered}
-                                    height={window.innerHeight}
+                                    height={heightCalc}
                                     width={width}
                                     overscanRowCount={30}
                                     rowCount={this.state.items.length}
