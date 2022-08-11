@@ -1,25 +1,9 @@
 // Originally from https://codepen.io/abidibo/pen/dwgLJo
 import React from 'react';
-import clsx from 'clsx';
-import './example.css';
-import { Table, Column, AutoSizer, InfiniteLoader, List } from 'react-virtualized';
-import { faker } from '@faker-js/faker';
+import { WindowScroller, AutoSizer, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
-import {
-    IHexDataRow,
-    IHexHeaderRow,
-    IHexTable,
-    HexDataRow,
-    HexHeaderRow,
-    OnCellChangeFunc
-} from './hex-elements';
+import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
 import { myGlobals, vscodeGetState, vscodeSetState } from './globals';
-
-const generateRandomItem = (idx: number) => ({
-    id: idx,
-    name: faker.name.fullName(),
-    email: faker.internet.email()
-});
 
 interface IHexTableState {
     header: IHexHeaderRow;
