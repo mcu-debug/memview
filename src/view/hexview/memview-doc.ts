@@ -158,6 +158,10 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
         const styleUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.css')
         );
+        const codiconsUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+        );
+
         const nonce = getNonce();
 
         const opts = JSON.stringify(doc.getOptions());
@@ -177,6 +181,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
 
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="${styleUri}" rel="stylesheet" />
+            <link href="${codiconsUri}" rel="stylesheet" />
             <title>Hex Editor</title>
             <script nonce="${nonce}" type="text/javascript">
                 window.initialDataFromVSCode = '${opts}';

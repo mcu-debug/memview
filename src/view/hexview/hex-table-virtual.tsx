@@ -1,6 +1,6 @@
 // Originally from https://codepen.io/abidibo/pen/dwgLJo
 import React from 'react';
-import { WindowScroller, AutoSizer, InfiniteLoader, List } from 'react-virtualized';
+import { AutoSizer, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
 import { myGlobals, vscodeGetState, vscodeSetState } from './globals';
@@ -169,7 +169,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         // never displays a scrollbar
         const heightCalc = window.innerHeight - this.state.rowHeight - 2;
         return (
-            <div className='container'>
+            <div className='container' style={{ overflowX: 'scroll' }}>
                 <HexHeaderRow address={this.props.address}></HexHeaderRow>
                 <InfiniteLoader
                     isRowLoaded={({ index }) => !!this.state.items[index]}

@@ -6,6 +6,7 @@ import { RecoilRoot } from 'recoil';
 import './index.css';
 import { HexTable } from './hex-elements';
 import { HexTableVirtual } from './hex-table-virtual';
+import { MemViewToolbar } from './top-panel';
 
 // const vscode = window.acquireVsCodeApi();
 
@@ -37,22 +38,10 @@ if (!myGlobals.bytes) {
 myGlobals.origBytes = Uint8Array.from(myGlobals.bytes);
 
 const timer = new Utils.Timekeeper();
-/*
-ReactDOM.render(
-    <RecoilRoot>
-        <HexTable
-            address={myGlobals.minAddress}
-            byteStart={0}
-            numBytes={myGlobals.bytes.length}
-            dirty={false}
-        />
-    </RecoilRoot>,
-    document.getElementById('root')
-);
-*/
 
 ReactDOM.render(
     <RecoilRoot>
+        <MemViewToolbar junk='abcd'></MemViewToolbar>
         <HexTableVirtual
             address={myGlobals.minAddress}
             byteStart={0}

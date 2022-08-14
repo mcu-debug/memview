@@ -1,8 +1,10 @@
+#root {
+    overflow-x: scroll;
+}
 .hex-cell {
     border: 1px;
     border-color: coral;
     margin: 0px;
-    /*padding: 0 calc(var(--cell-size) / 4);*/
     text-align: center; /* Vertical alignment */
     justify-content: center; /* Horizontal alignment */
     white-space: pre;
@@ -46,6 +48,7 @@
     display: flex;
     font-weight: bold;
     white-space: pre;
+    width: min-content;
 }
 
 .hex-data-row {

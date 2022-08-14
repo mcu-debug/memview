@@ -67,6 +67,7 @@
         "vscode-webview-tools": "^0.1.1"
     },
     "dependencies": {
+        "@vscode/codicons": "^0.0.32",
         "@vscode/debugprotocol": "^1.56.1",
         "@vscode/extension-telemetry": "0.5.2",
         "@vscode/webview-ui-toolkit": "^1.0.0",
