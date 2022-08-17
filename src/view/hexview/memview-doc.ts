@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { readFileSync } from 'node:fs';
-import { IMemviewDocumentOptions } from './globals';
-import { WebviewDoc, IWebviewDocXfer, ICmdGetMemory, IGetMemoryCommand, ICmdBase, CmdType } from './webview-doc';
+import { WebviewDoc, IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType, IResponse, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions } from './webview-doc';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -233,7 +232,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
     }
 
     private handleMessage(msg: any) {
-        console.log('MemViewPanelProvider.onDidReceiveMessage', msg);
+        // console.log('MemViewPanelProvider.onDidReceiveMessage', msg);
         switch (msg?.type) {
             case 'command': {
                 const body: any = msg.body as ICmdBase;
@@ -246,6 +245,25 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                             doc.getMoreMemory(BigInt(memCmd.addr), memCmd.count).then((b) => {
                                 this.postResponse(body, b);
                             });
+                        } else {
+                            this.postResponse(body, new Uint8Array(0));
+                        }
+                        break;
+                    }
+                    case CmdType.GetDocuments: {
+                        const docs = [];
+                        for (const [_key, value] of Object.entries(WebviewDoc.allDocuments)) {
+                            const doc = value.getSerializable();
+                            docs.push(doc);
+                        }
+                        this.postResponse(body, docs);
+                        break;
+                    }
+                    case CmdType.SetByte: {
+                        const doc = WebviewDoc.getDocumentById(body.sessionId);
+                        if (doc) {
+                            const memCmd = (body as ICmdSetByte);
+                            doc.setByteLocal(BigInt(memCmd.addr), memCmd.value);
                         }
                         break;
                     }
@@ -262,9 +280,10 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
     }
 
     private postResponse(msg: ICmdBase, body: any) {
-        const obj = {
+        const obj: IResponse = {
             type: 'response',
-            seq: msg.seq,
+            seq: msg.seq ?? 0,
+            command: msg.type,
             body: body
         };
         this.webviewView?.webview.postMessage(obj);
@@ -272,14 +291,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
 
     private updateHtmlForInit() {
         if (this.webviewView) {
-            const docs = [];
-            for (const [_key, value] of Object.entries(WebviewDoc.allDocuments)) {
-                const doc = value.getSerializable();
-                docs.push(doc);
-            }
-
             this.webviewView.webview.html = MemviewDocumentProvider.getWebviewContent(
-                this.webviewView.webview, this.context, JSON.stringify(docs));
+                this.webviewView.webview, this.context, '');
         }
     }
 
@@ -294,23 +307,24 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         const buf = readFileSync(path);
         WebviewDoc.init(new mockDebugger(buf, 0n));
         const newDoc = new WebviewDoc(props);
-        setTimeout(() => {
-            WebviewDoc.addDocument(newDoc, true);
-            MemViewPanelProvider.Provider.updateHtmlForInit();
-        }, 5000);
+        WebviewDoc.addDocument(newDoc, true);
+        MemViewPanelProvider.Provider.updateHtmlForInit();
     }
 }
 
-class mockDebugger implements IGetMemoryCommand {
+class mockDebugger implements IMemoryInterfaceCommands {
     constructor(private testBuffer: Uint8Array, private startAddress: bigint) {
     }
-    getMoreMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
+    getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
         const start = Number(BigInt(arg.addr) - this.startAddress);
         const end = start + arg.count;
         const bytes = this.testBuffer.slice(
             start > this.testBuffer.length ? this.testBuffer.length : start,
             end > this.testBuffer.length ? this.testBuffer.length : end);
         return Promise.resolve(bytes);
+    }
+    setMemory(_arg: ICmdSetMemory): Promise<boolean> {
+        return Promise.resolve(true);
     }
 }
 

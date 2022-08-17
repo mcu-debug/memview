@@ -3,7 +3,7 @@ import React from 'react';
 import { AutoSizer, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
-import { vscodeGetState, vscodeSetState } from './globals';
+import { vscodeGetState, vscodeSetState } from './webview-globals';
 
 interface IHexTableState {
     header: IHexHeaderRow;

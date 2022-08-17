@@ -1,12 +1,16 @@
 
 declare function acquireVsCodeApi(): IVsCodeApi;
-window.addEventListener('message', vscodeReceiveMessage);
+
+export function globalsInit() {
+    window.addEventListener('message', vscodeReceiveMessage);
+    myGlobals.vscode = acquireVsCodeApi();
+}
 
 import {
     atom,
     RecoilState,
 } from 'recoil';
-import { MsgResponse, ICmdBase } from './webview-doc';
+import { MsgResponse, ICmdBase, IResponse, CmdType } from './webview-doc';
 
 export interface IVsCodeApi {
     postMessage(msg: unknown): void;
@@ -15,22 +19,10 @@ export interface IVsCodeApi {
 }
 
 export interface IMyGlobals {
-    vscode: IVsCodeApi;
-    origBytes: Uint8Array;
-    bytes: Uint8Array;
-    // both min and max addresses are inclusive
-    minAddress: bigint,
-    maxAddress: bigint | undefined,
-    isReadonly: boolean;
+    vscode?: IVsCodeApi;
 }
 
 export const myGlobals: IMyGlobals = {
-    vscode: acquireVsCodeApi(),
-    origBytes: new Uint8Array(0),
-    bytes: new Uint8Array(0),
-    minAddress: 0n,
-    maxAddress: undefined,
-    isReadonly: false
 };
 
 export const frozenState: RecoilState<boolean> = atom({
@@ -38,19 +30,8 @@ export const frozenState: RecoilState<boolean> = atom({
     default: false,      // default value (aka initial value)
 });
 
-export interface IMemviewDocumentOptions {
-    bytes: Uint8Array;
-    uriString: string;
-    fsPath: string;
-    isReadonly?: boolean;
-    memoryReference?: string;
-    expression?: string;
-    isFixedSize?: boolean;
-    initialSize?: number;
-}
-
 export function vscodeGetState<T>(item: string): T | undefined {
-    const state = myGlobals.vscode.getState();
+    const state = myGlobals.vscode?.getState();
     if (state) {
         return state[item] as T;
     }
@@ -58,9 +39,9 @@ export function vscodeGetState<T>(item: string): T | undefined {
 }
 
 export function vscodeSetState<T>(item: string, v: T): void {
-    const state = { ...myGlobals.vscode.getState() };
+    const state = { ...myGlobals.vscode?.getState() };
     state[item] = v;
-    myGlobals.vscode.setState(state);
+    myGlobals.vscode?.setState(state);
 }
 
 type CommandHandler = (event: any) => void;
@@ -79,29 +60,19 @@ export function vscodePostCommand(msg: ICmdBase): Promise<any> {
     return new Promise((resolve) => {
         msg.seq = getSeqNumber();
         pendingRequests[seqNumber] = { request: msg, resolve: resolve };
-        myGlobals.vscode.postMessage({ type: 'command', body: msg });
+        myGlobals.vscode?.postMessage({ type: 'command', body: msg });
     });
 }
 
+export function vscodePostCommandNoResponse(msg: ICmdBase): void {
+    msg.seq = getSeqNumber();
+    myGlobals.vscode?.postMessage({ type: 'command', body: msg });
+}
+
 function vscodeReceiveMessage(event: any) {
-    const data = event.data;
-    console.log('vscodeReceiveMessage', data);
+    const data = event.data as IResponse;
     if (data.type === 'response') {
-        const seq = data.seq;
-        if (typeof seq === 'number') {
-            const pending = pendingRequests[seq];
-            if (pending) {
-                if (pending.resolve) {
-                    const tmp = new Uint8Array(data.body.data);
-                    pending.resolve(tmp);
-                }
-                delete pendingRequests[seq];
-            } else {
-                console.error(`No pending response for comand with id ${seq}`, data);
-            }
-        } else {
-            console.error('No/invalid message id for', data);
-        }
+        recieveResponseFromVSCode(data);
     } else if (data.type === 'command') {
         if (typeof data.command === 'string') {
             const handlers = commandHanders[data.command];
@@ -118,6 +89,29 @@ function vscodeReceiveMessage(event: any) {
     } else {
         console.error('unrecognized event type for "message" from vscode', data);
     }
+}
+
+function recieveResponseFromVSCode(response: IResponse) {
+    const seq = response.seq;
+    const pending = pendingRequests[seq];
+    if (pending && pending.resolve) {
+        switch (response.command) {
+            // Some commands don't need any translation. Only deal with
+            // those that need it
+            case CmdType.GetMemory: {
+                const tmp = new Uint8Array(response.body.data);
+                pending.resolve(tmp);
+                break;
+            }
+            default: {
+                pending.resolve(response.body);
+                break;
+            }
+        }
+    } else {
+        console.error(`No pending response for comand with id ${seq}`, response);
+    }
+    delete pendingRequests[seq];
 }
 
 export function addMessageHandler(type: string, handler: CommandHandler) {

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { myGlobals } from './globals';
+import { myGlobals } from './webview-globals';
 import { WebviewDoc } from './webview-doc';
 // import { vsCodeDropdown } from '@vscode/webview-ui-toolkit';
 import {

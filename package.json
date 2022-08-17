@@ -3,6 +3,7 @@
     "displayName": "memview",
     "description": "Provide memory views for debuggers",
     "version": "0.0.1",
+    "publisher": "haneefdm",
     "engines": {
         "vscode": "^1.69.0"
     },

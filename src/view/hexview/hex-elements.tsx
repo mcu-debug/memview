@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from 'react';
-import { myGlobals, frozenState } from './globals';
+import { myGlobals, frozenState } from './webview-globals';
 import * as Utils from './utils';
 import {
     RecoilRoot,

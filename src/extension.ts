@@ -13,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
         // vscode.window.showInformationMessage("Hello World from memview!");
         // const blah = new HexViewLoader(undefined, context);
         // vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(p), 'memView.memview');
+        console.log('in hello world');
     });
     context.subscriptions.push(disposable);
 
@@ -25,11 +26,15 @@ export function activate(context: vscode.ExtensionContext) {
         console.log('in hello world2');
     });
     context.subscriptions.push(disposable);
-
-    DebugTrackerFactory.register(context);
-    MemviewDocumentProvider.register(context);
-    MemViewPanelProvider.register(context);
-    MemViewPanelProvider.doTest(p);
+    try {
+        DebugTrackerFactory.register(context);
+        // MemviewDocumentProvider.register(context);
+        MemViewPanelProvider.register(context);
+        MemViewPanelProvider.doTest(p);
+    }
+    catch (e) {
+        console.log('Memview extension could not start', e);
+    }
 }
 
 // this method is called when your extension is deactivated
