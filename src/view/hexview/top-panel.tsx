@@ -22,7 +22,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     constructor(props: IMemViewPanelProps) {
         super(props);
         this.state = {
-            currentTab: WebviewDoc.currentDoc ? WebviewDoc.currentDoc.id : '',
+            currentTab: WebviewDoc.currentDoc ? WebviewDoc.currentDoc.sessionId : '',
             width: window.innerWidth
         };
         window.addEventListener('resize', this.onResize.bind(this));
@@ -40,7 +40,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         let count = 0;
         for (const doc of WebviewDoc.getDocumentsList()) {
             docItems.push(
-                <VSCodeOption key={count} selected={doc.isCurrent} value={doc.id}>
+                <VSCodeOption key={count} selected={doc.isCurrent} value={doc.sessionId}>
                     {doc.displayName}
                 </VSCodeOption>
             );

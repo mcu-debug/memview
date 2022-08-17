@@ -3,7 +3,7 @@ import React from 'react';
 import { AutoSizer, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
-import { myGlobals, vscodeGetState, vscodeSetState } from './globals';
+import { vscodeGetState, vscodeSetState } from './globals';
 
 interface IHexTableState {
     header: IHexHeaderRow;
@@ -114,7 +114,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         let offset = this.props.byteStart + nOldItems * 16;
         const newItems: IHexDataRow[] = [];
         for (let ix = 0; ix < want; ix++, offset += 16, addr += 16n) {
-            if (addr >= this.endAddr || offset >= myGlobals.bytes.length) {
+            if (addr >= this.endAddr) {
                 break;
             }
             const tmp: IHexDataRow = {
@@ -138,10 +138,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
             this.promiseResolve();
             this.promiseResolve = undefined;
         }
-        this.eof =
-            addr >= this.endAddr ||
-            offset >= myGlobals.bytes.length ||
-            allItems.length >= maxNumRows;
+        this.eof = addr >= this.endAddr || allItems.length >= maxNumRows;
         return allItems;
     }
 

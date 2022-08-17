@@ -12,14 +12,19 @@
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
-        "onCommand:memview.helloWorld"
+        "onCommand:memview.memView",
+        "onCommand:memview.memView2"
     ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "memview.helloWorld",
+                "command": "memview.memView",
                 "title": "Hello World"
+            },
+            {
+                "command": "memview.memView2",
+                "title": "Hello World2"
             }
         ],
         "customEditors": [
@@ -33,7 +38,25 @@
                 ],
                 "priority": "option"
             }
-        ]
+        ],
+        "viewsContainers": {
+            "panel": [
+                {
+                    "icon": "",
+                    "id": "memview",
+                    "title": "MEMORY"
+                }
+            ]
+        },
+        "views": {
+            "memview": [
+                {
+                    "id": "memview.memView",
+                    "type": "webview",
+                    "name": "MEMORY"
+                }
+            ]
+        }
     },
     "scripts": {
         "postinstall": "patch-package",

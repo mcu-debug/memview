@@ -1,4 +1,3 @@
-// declare const acquireVsCodeApi: any;
 
 declare function acquireVsCodeApi(): IVsCodeApi;
 window.addEventListener('message', vscodeReceiveMessage);
@@ -7,6 +6,7 @@ import {
     atom,
     RecoilState,
 } from 'recoil';
+import { MsgResponse, ICmdBase } from './webview-doc';
 
 export interface IVsCodeApi {
     postMessage(msg: unknown): void;
@@ -39,7 +39,7 @@ export const frozenState: RecoilState<boolean> = atom({
 });
 
 export interface IMemviewDocumentOptions {
-    bytes: Buffer;
+    bytes: Uint8Array;
     uriString: string;
     fsPath: string;
     isReadonly?: boolean;
@@ -63,46 +63,41 @@ export function vscodeSetState<T>(item: string, v: T): void {
     myGlobals.vscode.setState(state);
 }
 
-
-export enum CmdType {
-    GetMemory = 'GetMemory',
-}
-
-export interface ICmdBase {
-    type: CmdType;
-    id: number;
-}
-
-interface MsgResponse {
-    request: ICmdBase;
-    resolve: (arg: any) => void;
-    resonse?: any;
-}
-
 type CommandHandler = (event: any) => void;
 const commandHanders: { [command: string]: CommandHandler[] } = {};
 const pendingRequests: { [id: number]: MsgResponse } = {};
+let seqNumber = 0;
 
-export function vscodePostCommandMessage(msg: ICmdBase): Promise<any> {
+function getSeqNumber(): number {
+    if (seqNumber > (1 << 30)) {
+        seqNumber = 0;
+    }
+    return ++seqNumber;
+}
+
+export function vscodePostCommand(msg: ICmdBase): Promise<any> {
     return new Promise((resolve) => {
-        pendingRequests[msg.id] = { request: msg, resolve: resolve };
+        msg.seq = getSeqNumber();
+        pendingRequests[seqNumber] = { request: msg, resolve: resolve };
         myGlobals.vscode.postMessage({ type: 'command', body: msg });
     });
 }
 
 function vscodeReceiveMessage(event: any) {
     const data = event.data;
+    console.log('vscodeReceiveMessage', data);
     if (data.type === 'response') {
-        const id = data.id;
-        if (typeof id === 'number') {
-            const pending = pendingRequests[id];
+        const seq = data.seq;
+        if (typeof seq === 'number') {
+            const pending = pendingRequests[seq];
             if (pending) {
                 if (pending.resolve) {
-                    pending.resolve(data.body);
+                    const tmp = new Uint8Array(data.body.data);
+                    pending.resolve(tmp);
                 }
-                delete pendingRequests[id];
+                delete pendingRequests[seq];
             } else {
-                console.error(`No pending response for comand with id ${id}`, data);
+                console.error(`No pending response for comand with id ${seq}`, data);
             }
         } else {
             console.error('No/invalid message id for', data);

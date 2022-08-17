@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { readFileSync } from 'node:fs';
 import { IMemviewDocumentOptions } from './globals';
+import { WebviewDoc, IWebviewDocXfer, ICmdGetMemory, IGetMemoryCommand, ICmdBase, CmdType } from './webview-doc';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -19,7 +20,7 @@ export class MemviewDocument implements vscode.CustomDocument {
         memoryReference: '0x0',
         isFixedSize: false,
         initialSize: 1024,
-        bytes: Buffer.alloc(0),
+        bytes: new Uint8Array(0),
         fsPath: ''
     };
     constructor(public uri: vscode.Uri) {
@@ -146,26 +147,24 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
             enableScripts: true,
         };
 
-        webviewPanel.webview.html = this.getWebviewContent(webviewPanel.webview, memDoc);
+        webviewPanel.webview.html = MemviewDocumentProvider.getWebviewContent(
+            webviewPanel.webview, this.context, JSON.stringify(memDoc.getOptions()));
         memDoc.setEditorHandles(this, webviewPanel);
     }
 
-    private getWebviewContent(webview: vscode.Webview, doc: MemviewDocument): string {
+    public static getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionContext, initJson: string): string {
         // Convert the styles and scripts for the webview into webview URIs
         const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.js')
+            vscode.Uri.joinPath(context.extensionUri, 'dist', 'memview.js')
         );
         const styleUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.css')
+            vscode.Uri.joinPath(context.extensionUri, 'dist', 'memview.css')
         );
         const codiconsUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+            vscode.Uri.joinPath(context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
         );
 
         const nonce = getNonce();
-
-        const opts = JSON.stringify(doc.getOptions());
-
         const ret = /* html */ `
         <!DOCTYPE html>
         <html lang="en">
@@ -184,7 +183,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
             <link href="${codiconsUri}" rel="stylesheet" />
             <title>Hex Editor</title>
             <script nonce="${nonce}" type="text/javascript">
-                window.initialDataFromVSCode = '${opts}';
+                window.initialDataFromVSCode = '${initJson}';
             </script>
           </head>
           <body>
@@ -194,45 +193,124 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
         </html>`;
         return ret;
     }
-    private getHtmlForWebviewx(webview: vscode.Webview): string {
-        // Convert the styles and scripts for the webview into webview URIs
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.js'));
-        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'memview.css'));
+}
 
-        // Use a nonce to whitelist which scripts can be run
-        const nonce = getNonce();
-        const initialData = new Uint8Array(1024);
-        for (let i = 0; i < initialData.length; i++) {
-            initialData[i] = Math.floor(Math.random() * 256) & 0xff;
+export class MemViewPanelProvider implements vscode.WebviewViewProvider {
+    private static readonly viewType = 'memview.memView';
+    private static Provider: MemViewPanelProvider;
+    private webviewView: vscode.WebviewView | undefined;
+
+    public static register(context: vscode.ExtensionContext) {
+        MemViewPanelProvider.Provider = new MemViewPanelProvider(context);
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider(MemViewPanelProvider.viewType, MemViewPanelProvider.Provider),
+        );
+    }
+
+    constructor(public context: vscode.ExtensionContext) {
+    }
+
+    resolveWebviewView(
+        webviewView: vscode.WebviewView,
+        _context: vscode.WebviewViewResolveContext<unknown>,
+        _token: vscode.CancellationToken): void | Thenable<void> {
+
+        webviewView.webview.options = {
+            enableScripts: true,
+        };
+        webviewView.description = 'View Memory from Debuggers';
+        this.webviewView = webviewView;
+
+        console.log('In resolveWebviewView');
+        this.webviewView.onDidDispose((_e) => {
+            console.log('disposed webView');
+            this.webviewView = undefined;
+        });
+
+        webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
+
+        this.updateHtmlForInit();
+    }
+
+    private handleMessage(msg: any) {
+        console.log('MemViewPanelProvider.onDidReceiveMessage', msg);
+        switch (msg?.type) {
+            case 'command': {
+                const body: any = msg.body as ICmdBase;
+                if (!body) { break; }
+                switch (body.type) {
+                    case CmdType.GetMemory: {
+                        const doc = WebviewDoc.getDocumentById(body.sessionId);
+                        if (doc) {
+                            const memCmd = (body as ICmdGetMemory);
+                            doc.getMoreMemory(BigInt(memCmd.addr), memCmd.count).then((b) => {
+                                this.postResponse(body, b);
+                            });
+                        }
+                        break;
+                    }
+                    default: {
+                        console.log('handleMessage: Unknown command', body);
+                    }
+                }
+                break;
+            }
+            case 'refresh': {
+                break;
+            }
         }
+    }
 
-        return /* html */`
-			<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="UTF-8">
+    private postResponse(msg: ICmdBase, body: any) {
+        const obj = {
+            type: 'response',
+            seq: msg.seq,
+            body: body
+        };
+        this.webviewView?.webview.postMessage(obj);
+    }
 
-				<!--
-				Use a content security policy to only allow loading images from https or from our extension directory,
-				and only allow scripts that have a specific nonce.
-				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} blob:; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+    private updateHtmlForInit() {
+        if (this.webviewView) {
+            const docs = [];
+            for (const [_key, value] of Object.entries(WebviewDoc.allDocuments)) {
+                const doc = value.getSerializable();
+                docs.push(doc);
+            }
 
-				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+            this.webviewView.webview.html = MemviewDocumentProvider.getWebviewContent(
+                this.webviewView.webview, this.context, JSON.stringify(docs));
+        }
+    }
 
-				<link href="${styleUri}" rel="stylesheet" />
-				<script nonce="${nonce}" src="${scriptUri}" defer></script>
+    static doTest(path: string) {
+        const props: IWebviewDocXfer = {
+            sessionId: getNonce(),
+            displayName: '0xdeadbeef',
+            startAddress: '0',
+            isReadOnly: false,
+            isCurrentDoc: true,
+        };
+        const buf = readFileSync(path);
+        WebviewDoc.init(new mockDebugger(buf, 0n));
+        const newDoc = new WebviewDoc(props);
+        setTimeout(() => {
+            WebviewDoc.addDocument(newDoc, true);
+            MemViewPanelProvider.Provider.updateHtmlForInit();
+        }, 5000);
+    }
+}
 
-				<title>Hex Editor</title>
-                <script>
-                window.acquireVsCodeApi = acquireVsCodeApi;
-                window.initialData = ${initialData};
-              </script>
-                </head>
-			<body>
-                <div id="root"></div>
-			</body>
-			</html>`;
+class mockDebugger implements IGetMemoryCommand {
+    constructor(private testBuffer: Uint8Array, private startAddress: bigint) {
+    }
+    getMoreMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
+        const start = Number(BigInt(arg.addr) - this.startAddress);
+        const end = start + arg.count;
+        const bytes = this.testBuffer.slice(
+            start > this.testBuffer.length ? this.testBuffer.length : start,
+            end > this.testBuffer.length ? this.testBuffer.length : end);
+        return Promise.resolve(bytes);
     }
 }
 

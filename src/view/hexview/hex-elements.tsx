@@ -10,55 +10,39 @@ import {
     useRecoilValue,
     useSetRecoilState
 } from 'recoil';
+import { WebviewDoc, IMemValue, DummyByte } from './webview-doc';
 
-export type OnCellChangeFunc = (address: bigint, byteOffset: number, val: number) => void;
+export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IHexCell {
     address: bigint;
-    byteOffset: number;
     dirty: boolean;
+    byteInfo: IMemValue;
     onChange?: OnCellChangeFunc;
 }
 
 interface IHexCellState {
     frozen: boolean;
-    value: number;
 }
 export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
-    private inRange = false;
-    private val = 0;
-    private origVal = 0;
     private static currentDOMElt: HTMLSpanElement | undefined = undefined; // createRef not working on span element
     private static lastGoodValue = '';
     private static newGoodValue = '';
 
     constructor(public props: IHexCell) {
         super(props);
-        this.updatePrivates();
         /*
         const [frozen] = useRecoilState<boolean>(frozenState);
         */
         this.state = {
-            frozen: false,
-            value: this.val
+            frozen: false
         };
-    }
-
-    private updatePrivates() {
-        this.inRange = addrInRange(this.props.address, this.props.byteOffset);
-        this.val = this.inRange ? myGlobals.bytes[this.props.byteOffset] : -1;
-        this.origVal = this.inRange ? myGlobals.origBytes[this.props.byteOffset] : -1;
-    }
-
-    componentDidUpdate(_prevProps: IHexCell) {
-        // TODO: Need to see if we need to reset states
-        this.updatePrivates();
     }
 
     classNames = () => {
         return (
             'hex-cell hex-cell-value' +
             (this.props.dirty || this.state.frozen ? ' hex-cell-value-dirty' : '') +
-            (this.origVal !== this.state.value ? ' hex-cell-value-changed' : '')
+            (this.props.byteInfo.orig !== this.props.byteInfo.cur ? ' hex-cell-value-changed' : '')
         );
     };
 
@@ -75,22 +59,23 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
         HexCellValue.lastGoodValue = val;
         const intVal = parseInt(val, 16);
-        if (this.state.value !== intVal) {
-            this.val = intVal;
-            this.setState({ value: intVal });
-            myGlobals.bytes[this.props.byteOffset] = intVal;
+        if (this.props.byteInfo.cur !== intVal) {
+            this.props.byteInfo.cur = intVal;
+            WebviewDoc.setCurrentDocByte(this.props.address, intVal);
             if (this.props.onChange) {
-                this.props.onChange(this.props.address, this.props.byteOffset, intVal);
+                this.props.onChange(this.props.address, intVal);
             }
         }
     };
 
     valueStr = () => {
-        return this.state.value >= 0 ? hexValuesLookup[(this.state.value >>> 0) & 0xff] : '~~';
+        return this.props.byteInfo.cur >= 0
+            ? hexValuesLookup[(this.props.byteInfo.cur >>> 0) & 0xff]
+            : '~~';
     };
 
     editable = () => {
-        return !this.state.frozen && !myGlobals.isReadonly;
+        return !this.state.frozen && !WebviewDoc.currentDoc?.isReadonly;
     };
 
     public onKeyDown(event: any) {
@@ -218,13 +203,12 @@ export const HexCellAddress: React.FC<{ address: bigint }> = ({ address }) => {
 };
 
 export const HexCellChar: React.FunctionComponent<{
-    address: bigint;
-    byteOffset: number;
-}> = ({ address, byteOffset }) => {
+    _address: bigint;
+    byteInfo: IMemValue;
+}> = ({ _address, byteInfo }) => {
     // const id = `hex-cell-char-${address}`
-    const inRange = addrInRange(address, byteOffset);
-    const val = inRange ? (myGlobals.bytes[byteOffset] >>> 0) & 0xff : -1;
-    const origVal = inRange ? (myGlobals.origBytes[byteOffset] >>> 0) & 0xff : -1;
+    const val = byteInfo.cur;
+    const origVal = byteInfo.orig;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
     const classNames = 'hex-cell hex-cell-char' + (val !== origVal ? ' hex-cell-char-changed' : '');
     return <span className={classNames}>{valueStr}</span>;
@@ -302,21 +286,38 @@ export interface IHexDataRow {
 }
 
 interface IHexDataRowState {
-    counter: number;
+    bytes: IMemValue[];
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private onRowChangeFunc = this.rowChanged.bind(this);
     constructor(public props: IHexDataRow) {
         super(props);
-        this.state = { counter: 0 };
+        const bytes = [];
+        for (let ix = 0; ix < 16; ix++) {
+            bytes[ix] = DummyByte;
+        }
+        this.state = { bytes: bytes };
     }
 
-    private rowChanged(address: bigint, byteOffset: number, newVal: number) {
-        this.setState({ counter: this.state.counter + 1 }); // Force an update
+    private async rowChanged(address: bigint, newVal: number) {
+        await this.getBytes();
         if (this.props.onChange) {
-            this.props.onChange(address, byteOffset, newVal);
+            this.props.onChange(address, newVal);
         }
+    }
+
+    private async getBytes() {
+        const ret = [];
+        for (let ix = 0n; ix < 16n; ix++) {
+            const byte = await WebviewDoc.getCurrentDocByte(this.props.address + ix);
+            ret.push(byte);
+        }
+        this.setState({ bytes: ret });
+    }
+
+    async componentDidMount() {
+        await this.getBytes();
     }
 
     render() {
@@ -325,17 +326,18 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         const chars = [];
         for (let ix = 0; ix < 16; ix++) {
             const addr = this.props.address + BigInt(ix);
-            const offset = this.props.byteOffset + ix;
             values.push(
                 <HexCellValue
                     key={ix + 2}
                     address={addr}
-                    byteOffset={offset}
+                    byteInfo={this.state.bytes[ix]}
                     dirty={this.props.dirty}
                     onChange={this.onRowChangeFunc}
                 />
             );
-            chars.push(<HexCellChar address={addr} byteOffset={offset} key={ix + 18} />);
+            chars.push(
+                <HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={ix + 18} />
+            );
         }
         const gap = <HexCellEmpty length={1} fillChar='.' cls='hex-cell-invisible'></HexCellEmpty>;
         return (
@@ -449,20 +451,6 @@ for (let byte = 0; byte <= 255; byte++) {
             : String.fromCharCode(byte);
     charCodesLookup.push(v);
     hexValuesLookup.push(byte.toString(16).padStart(2, '0'));
-}
-
-function addrInRange(addr: bigint, byteOffset: number): boolean {
-    // TODO: handle unsigned bigint case. Not sure if the high bit is set
-    if (byteOffset >= myGlobals.bytes?.length) {
-        return false;
-    }
-    if (addr < myGlobals.minAddress) {
-        return false;
-    }
-    if (myGlobals.maxAddress !== undefined && addr > myGlobals.maxAddress) {
-        return false;
-    }
-    return true;
 }
 
 /*
