@@ -95,6 +95,7 @@
         "@vscode/debugprotocol": "^1.56.1",
         "@vscode/extension-telemetry": "0.5.2",
         "@vscode/webview-ui-toolkit": "^1.0.0",
+        "buffer": "^6.0.3",
         "clsx": "^1.2.1",
         "patch-package": "^6.4.7",
         "react": "^17.0.2",

@@ -307,7 +307,6 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         const buf = readFileSync(path);
         WebviewDoc.init(new mockDebugger(buf, 0n));
         const newDoc = new WebviewDoc(props);
-        WebviewDoc.addDocument(newDoc, true);
         MemViewPanelProvider.Provider.updateHtmlForInit();
     }
 }

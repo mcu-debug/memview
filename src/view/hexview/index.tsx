@@ -56,13 +56,19 @@ vscodePostCommand(msg)
             for (const item of results) {
                 const xferObj = item as IWebviewDocXfer;
                 const doc = new WebviewDoc(xferObj);
-                WebviewDoc.addDocument(doc, !!xferObj.isCurrentDoc);
                 doc.isReady = true;
             }
         }
+        if (Object.entries(WebviewDoc.allDocuments).length === 0) {
+            WebviewDoc.createDummyDoc();
+        }
+        if (!WebviewDoc.currentDoc) {
+            const [_key, doc] = Object.entries(WebviewDoc.allDocuments)[0];
+            WebviewDoc.setCurrentDoc(doc);
+        }
     })
     .catch((e) => {
-        console.error('Failed to load documents');
+        console.error('Failed to load documents', e);
     })
     .finally(() => {
         start();

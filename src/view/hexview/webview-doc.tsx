@@ -8,6 +8,7 @@
  */
 
 import { vscodePostCommandNoResponse } from './webview-globals';
+import { Buffer } from 'buffer';
 
 export enum CmdType {
     GetDocuments = 'GetDocuments',
@@ -130,11 +131,8 @@ export class WebviewDoc {
                 this.modifiedMap.set(BigInt(key), value);
             }
         }
-        if (info.isCurrentDoc) {
-            WebviewDoc.setCurrentDoc(this);
-        }
-
         this.memory = new MemPages(this.baseAddress, this);
+        WebviewDoc.addDocument(this, !!info.isCurrentDoc);
     }
 
     private static pendingRequests: { [key: string]: Promise<Uint8Array> } = {};
@@ -211,7 +209,7 @@ export class WebviewDoc {
         return old;
     }
 
-    static addDocument(doc: WebviewDoc, makeCurrent = false) {
+    private static addDocument(doc: WebviewDoc, makeCurrent = false) {
         WebviewDoc.allDocuments[doc.sessionId] = doc;
         if (makeCurrent) {
             WebviewDoc.setCurrentDoc(doc);
@@ -282,6 +280,23 @@ export class WebviewDoc {
         };
         return tmp;
     }
+
+    public static createDummyDoc() {
+        let initString =
+            'Please add a new view using the dropdown menu above when a C/C++ like debugger is active. ' +
+            'We currently have support for "cppdbg" and "cortex-debug"';
+        initString = initString.replace(/ /g, '.');
+        const tmp: IWebviewDocXfer = {
+            sessionId: 'Dummy',
+            displayName: 'No memory view',
+            startAddress: '0',
+            maxBytes: initString.length,
+            isCurrentDoc: true,
+            isReadOnly: true
+        };
+        const doc = new WebviewDoc(tmp);
+        doc.memory.createDummyPage(initString);
+    }
 }
 
 function isEmpty(obj: any) {
@@ -301,6 +316,14 @@ class MemPages {
     public static readonly BucketSize = 512;
     private pages: IMemPage[] = [];
     constructor(private baseAddress: bigint, private parentDoc: WebviewDoc) {}
+
+    createDummyPage(str: string) {
+        const tmp: IMemPage = {
+            stale: false,
+            buffer: new Uint8Array(Buffer.from(str))
+        };
+        this.pages.push(tmp);
+    }
 
     private getSlot(addr: bigint): number {
         const slot = Math.floor(Number(addr - this.baseAddress) / MemPages.BucketSize);
