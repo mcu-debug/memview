@@ -2,30 +2,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { DebugTrackerFactory } from './view/hexview/debug-tracker';
-import { MemviewDocumentProvider, MemViewPanelProvider } from './view/hexview/memview-doc';
+import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/hexview/memview-doc';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "memview" is now active!');
     const p = path.join(context.extensionPath, 'package.json');
-    let disposable = vscode.commands.registerCommand('memview.memView', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        // vscode.window.showInformationMessage("Hello World from memview!");
-        // const blah = new HexViewLoader(undefined, context);
-        // vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(p), 'memView.memview');
-        console.log('in hello world');
-    });
-    context.subscriptions.push(disposable);
-
-    disposable = vscode.commands.registerCommand('memview.memView2', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        // vscode.window.showInformationMessage("Hello World from memview!");
-        // const blah = new HexViewLoader(undefined, context);
-        // MemViewPanelProvider.doTest(p);
-        console.log('in hello world2');
-    });
-    context.subscriptions.push(disposable);
     try {
         DebugTrackerFactory.register(context);
         // MemviewDocumentProvider.register(context);
@@ -35,7 +15,40 @@ export function activate(context: vscode.ExtensionContext) {
     catch (e) {
         console.log('Memview extension could not start', e);
     }
+
+    setContexts();
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('memview.toggleMemoryView', toggleMemoryView),
+        vscode.commands.registerCommand('memview.hello', () => {
+            vscode.window.showInformationMessage('Hello from memview extension');
+        }),
+        vscode.workspace.onDidChangeConfiguration(onSettingsChanged)
+    );
 }
+
+function toggleMemoryView() {
+    const config = vscode.workspace.getConfiguration('memview', null);
+    const isEnabled = !config.get('showMemoryPanel', false);
+    const panelLocation = config.get('memoryViewLocation', 'panel');
+    config.update('showMemoryPanel', isEnabled);
+    const status = isEnabled ? `visible in the '${panelLocation}' area` : 'hidden';
+    vscode.window.showInformationMessage(`Memory views are now ${status}`);
+}
+
+function onSettingsChanged(_e: vscode.ConfigurationChangeEvent) {
+    setContexts();
+}
+
+function setContexts() {
+    const config = vscode.workspace.getConfiguration('memview', null);
+    const isEnabled = config.get('showMemoryPanel', false);
+    const panelLocation = config.get('memoryViewLocation', 'panel');
+    vscode.commands.executeCommand('setContext', 'memview:showMemoryPanel', isEnabled);
+    vscode.commands.executeCommand('setContext', 'memview:memoryPanelLocation', panelLocation);
+}
+
+
 
 // this method is called when your extension is deactivated
 export function deactivate() {

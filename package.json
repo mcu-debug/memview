@@ -1,6 +1,6 @@
 {
     "name": "memview",
-    "displayName": "memview",
+    "displayName": "MemoryView",
     "description": "Provide memory views for debuggers",
     "version": "0.0.1",
     "publisher": "haneefdm",
@@ -13,19 +13,21 @@
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
-        "onCommand:memview.memView",
-        "onCommand:memview.memView2"
+        "onCommand:memview.hello",
+        "onCommand:memview.toggleMemoryView"
     ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "memview.memView",
-                "title": "Hello World"
+                "category": "MemoryView",
+                "command": "memview.hello",
+                "title": "Force 'memview' extension to load"
             },
             {
-                "command": "memview.memView2",
-                "title": "Hello World2"
+                "category": "MemoryView",
+                "command": "memview.toggleMemoryView",
+                "title": "Toggle Debugger Memory View Panel/Webview"
             }
         ],
         "customEditors": [
@@ -54,9 +56,29 @@
                 {
                     "id": "memview.memView",
                     "type": "webview",
-                    "name": "MEMORY"
+                    "name": "MEMORY",
+                    "when": "memview:showMemoryPanel && memview:memoryPanelLocation == panel"
                 }
             ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "memview",
+            "properties": {
+                "memview.showMemoryPanel": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show MEMORY memory panel"
+                },
+                "memview.memoryViewLocation": {
+                    "enum": [
+                        "panel",
+                        "editor"
+                    ],
+                    "default": "panel",
+                    "description": "`editor` shows memory views in the Editors area. Default is in the Panels area along with the `Debug Console`"
+                }
+            }
         }
     },
     "scripts": {

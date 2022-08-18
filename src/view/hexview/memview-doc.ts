@@ -226,6 +226,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
             this.webviewView = undefined;
         });
 
+        this.webviewView.onDidChangeVisibility((e) => {
+            console.log('Visibility = ', this.webviewView?.visible);
+        });
         webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
 
         this.updateHtmlForInit();

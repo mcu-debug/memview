@@ -184,6 +184,33 @@ export class WebviewDoc {
         }
     }
 
+    static getRowUnsafe(addr: bigint): IMemValue[] {
+        const doc = WebviewDoc.currentDoc;
+        if (doc && doc.addrInRange(addr)) {
+            const orig = doc.memory.getRowSync(addr);
+            const ret: IMemValue[] = [];
+            const isStale = doc.memory.isStale(addr);
+            for (const value of orig) {
+                const v = doc.modifiedMap.get(addr);
+                const tmp: IMemValue = {
+                    cur: v === undefined ? value : v,
+                    orig: value,
+                    stale: isStale,
+                    inRange: value >= 0
+                };
+                ret.push(tmp);
+                addr++;
+            }
+            return ret;
+        } else {
+            const ret: IMemValue[] = [];
+            for (let ix = 0; ix < 16; ix++) {
+                ret.push(DummyByte);
+            }
+            return ret;
+        }
+    }
+
     // Only for webviews. Will fail on VSCode side -- use setByteLocal() instead
     static setCurrentDocByte(addr: bigint, val: number) {
         const doc = WebviewDoc.currentDoc;
@@ -341,6 +368,18 @@ class MemPages {
         const offset = Number(addr - BigInt(slot * MemPages.BucketSize));
         const buf = page ? page.buffer : undefined;
         return buf && offset < buf.length ? buf[offset] : -1;
+    }
+
+    public getRowSync(addr: bigint): number[] {
+        const slot = this.getSlot(addr);
+        const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
+        let offset = Number(addr - BigInt(slot * MemPages.BucketSize));
+        const buf = page ? page.buffer : undefined;
+        const ret: number[] = [];
+        for (let ix = 0; ix < 16; ix++, offset++) {
+            ret.push(buf && offset < buf.length ? buf[offset] : -1);
+        }
+        return ret;
     }
 
     public getValue(addr: bigint, forceOld: boolean): number | Promise<number> {

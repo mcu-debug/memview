@@ -278,7 +278,6 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 
 export interface IHexDataRow {
     address: bigint;
-    byteOffset: number;
     dirty: boolean;
     onChange?: OnCellChangeFunc;
     style?: any;
@@ -291,6 +290,7 @@ interface IHexDataRowState {
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private onRowChangeFunc = this.rowChanged.bind(this);
+    private mountStatus = false;
     constructor(public props: IHexDataRow) {
         super(props);
         const bytes = [];
@@ -308,16 +308,23 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     private async getBytes() {
-        const ret = [];
-        for (let ix = 0n; ix < 16n; ix++) {
-            const byte = await WebviewDoc.getCurrentDocByte(this.props.address + ix);
-            ret.push(byte);
+        await WebviewDoc.getCurrentDocByte(this.props.address);
+        // Since we are async, we can get unmounted while we wait
+        if (this.mountStatus) {
+            // Get the first byte of the row. The rest should be in the same page
+            // so do it the fast way, since the bytes should have been loaded by now
+            const ret = WebviewDoc.getRowUnsafe(this.props.address);
+            this.setState({ bytes: ret });
         }
-        this.setState({ bytes: ret });
     }
 
     async componentDidMount() {
+        this.mountStatus = true;
         await this.getBytes();
+    }
+
+    componentWillUnmount() {
+        this.mountStatus = false;
     }
 
     render() {
@@ -369,13 +376,7 @@ export function HexTable(props: IHexTable): JSX.Element {
     const endAddr = ((props.address + BigInt(props.numBytes + 15)) / 16n) * 16n;
     for (let addr = startAddr; addr < endAddr; addr += 16n, offset += 16) {
         rows.push(
-            <HexDataRow
-                key={offset}
-                address={addr}
-                byteOffset={offset}
-                dirty={props.dirty}
-                onChange={props.onChange}
-            />
+            <HexDataRow key={offset} address={addr} dirty={props.dirty} onChange={props.onChange} />
         );
     }
 

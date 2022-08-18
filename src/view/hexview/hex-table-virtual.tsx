@@ -1,8 +1,9 @@
 // Originally from https://codepen.io/abidibo/pen/dwgLJo
 import React from 'react';
-import { AutoSizer, InfiniteLoader, List } from 'react-virtualized';
+import { AutoSizer, IndexRange, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
+import { WebviewDoc } from './webview-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 
 interface IHexTableState {
@@ -41,25 +42,25 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
     private onScrollFunc = this.onScroll.bind(this);
     private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
 
-    private promiseResolve: any;
     constructor(public props: IHexTable) {
         super(props);
 
         this.startAddr = (this.props.address / 16n) * 16n;
         this.endAddr = ((this.props.address + BigInt(this.props.numBytes + 15)) / 16n) * 16n;
-        const want = Math.round(window.innerHeight / estimatedRowHeight) + 15;
-        const items = this.actuallyLoadMore(want);
         this.state = {
             header: { address: this.props.address },
-            items: items,
+            items: [],
             rowHeight: estimatedRowHeight,
             scrollTop: getVscodeScrollTop()
         };
+        console.log('In HexTableVirtual.ctor()');
     }
 
     private rowHeightDetected = false;
-    componentDidMount() {
-        // lineHeight
+    async componentDidMount() {
+        const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
+        const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
+        await this.loadMore({ startIndex: top, stopIndex: top + want });
         if (!this.lineHeightDetectTimer && !this.rowHeightDetected) {
             this.lineHeightDetectTimer = setInterval(() => {
                 const elt = document.querySelector('.hex-cell-value');
@@ -96,50 +97,48 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         }, 250);
     }
 
-    loadMore(): Promise<any> {
-        // simulate a request
-        setTimeout(() => {
-            this.actuallyLoadMore();
-        }, 10);
-        // we need to return a promise
+    loadMore(params: IndexRange): Promise<any> {
         return new Promise((resolve, _reject) => {
-            //  Maybe we should have a set of promises or return old if called before previous one was done
-            this.promiseResolve = resolve;
+            const newItems = this.actuallyLoadMore(params);
+            const promises = [];
+            for (const item of newItems) {
+                promises.push(WebviewDoc.getCurrentDocByte(item.address));
+            }
+            Promise.all(promises)
+                .catch((e) => {
+                    console.log('loadMore() failure not expected', e);
+                })
+                .finally(() => {
+                    resolve(true);
+                });
         });
     }
 
-    actuallyLoadMore(want = 100): IHexDataRow[] {
-        const nOldItems = this.state?.items ? this.state.items.length : 0;
-        let addr = this.startAddr + BigInt(nOldItems * 16);
-        let offset = this.props.byteStart + nOldItems * 16;
-        const newItems: IHexDataRow[] = [];
-        for (let ix = 0; ix < want; ix++, offset += 16, addr += 16n) {
+    actuallyLoadMore(params: IndexRange): IHexDataRow[] {
+        // We intentionally copy the items to force a state change.
+        const items = this.state.items ? [...this.state.items] : [];
+        const newItems = [];
+        let changed;
+        for (let ix = items.length; ix <= params.stopIndex; ix++) {
+            const addr = this.props.address + BigInt(ix * 16);
             if (addr >= this.endAddr) {
                 break;
             }
             const tmp: IHexDataRow = {
                 address: addr,
-                byteOffset: offset,
                 dirty: this.props.dirty,
                 onChange: this.props.onChange
             };
+            items.push(tmp);
             newItems.push(tmp);
+            changed = true;
         }
-
-        // Cause the minimum of disturbance
-        const allItems = !nOldItems // No previous items
-            ? newItems
-            : newItems.length // Something to concat
-            ? this.state.items.concat(newItems)
-            : this.state.items; // Nothing changed
-        if (this.promiseResolve) {
-            this.setState({ items: allItems });
-            // resolve the promise after data where fetched
-            this.promiseResolve();
-            this.promiseResolve = undefined;
+        // Nothing changed
+        if (changed) {
+            this.setState({ items: items });
         }
-        this.eof = addr >= this.endAddr || allItems.length >= maxNumRows;
-        return allItems;
+        this.eof = items[items.length - 1].address >= this.endAddr || items.length >= maxNumRows;
+        return newItems;
     }
 
     private showScrollingPlaceholder = false;
