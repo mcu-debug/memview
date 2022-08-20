@@ -10,7 +10,9 @@ import {
     atom,
     RecoilState,
 } from 'recoil';
-import { MsgResponse, ICmdBase, IResponse, CmdType } from './webview-doc';
+import { DualViewDoc } from './dual-view-doc';
+import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
+import { WebviewDebugTracker } from './webview-debug-tracker';
 
 export interface IVsCodeApi {
     postMessage(msg: unknown): void;
@@ -70,7 +72,7 @@ export function vscodePostCommandNoResponse(msg: ICmdBase): void {
 }
 
 function vscodeReceiveMessage(event: any) {
-    const data = event.data as IResponse;
+    const data = event.data as IMessage;
     if (data.type === 'response') {
         recieveResponseFromVSCode(data);
     } else if (data.type === 'command') {
@@ -86,21 +88,33 @@ function vscodeReceiveMessage(event: any) {
         } else {
             console.error(`unrecognized command ${data.command} for command`, data);
         }
+    } else if (data.type === 'notice') {
+        recieveNoticeFromVSCode(data);
     } else {
         console.error('unrecognized event type for "message" from vscode', data);
     }
 }
 
-function recieveResponseFromVSCode(response: IResponse) {
+function recieveResponseFromVSCode(response: IMessage) {
     const seq = response.seq;
     const pending = pendingRequests[seq];
     if (pending && pending.resolve) {
         switch (response.command) {
             // Some commands don't need any translation. Only deal with
             // those that need it
+            case CmdType.GetDocuments: {
+                DualViewDoc.initializeAllDocuments(response.body);
+                pending.resolve(true);
+                break;
+            }
             case CmdType.GetMemory: {
                 const tmp = new Uint8Array(response.body.data);
                 pending.resolve(tmp);
+                break;
+            }
+            case CmdType.GetDebuggerSessions: {
+                WebviewDebugTracker.updateSessions(response.body);
+                pending.resolve(true);
                 break;
             }
             default: {
@@ -112,6 +126,19 @@ function recieveResponseFromVSCode(response: IResponse) {
         console.error(`No pending response for comand with id ${seq}`, response);
     }
     delete pendingRequests[seq];
+}
+
+function recieveNoticeFromVSCode(notice: IMessage) {
+    switch (notice.command) {
+        case CmdType.DebugerStatus: {
+            WebviewDebugTracker.updateSession(notice.body);
+            break;
+        }
+        default: {
+            console.error('Invalid notice', notice);
+            break;
+        }
+    }
 }
 
 export function addMessageHandler(type: string, handler: CommandHandler) {

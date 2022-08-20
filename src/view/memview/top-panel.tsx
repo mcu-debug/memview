@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { myGlobals } from './webview-globals';
-import { WebviewDoc } from './webview-doc';
+import { DualViewDoc } from './dual-view-doc';
 // import { vsCodeDropdown } from '@vscode/webview-ui-toolkit';
 import {
     VSCodeButton,
@@ -22,7 +22,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     constructor(props: IMemViewPanelProps) {
         super(props);
         this.state = {
-            currentTab: WebviewDoc.currentDoc ? WebviewDoc.currentDoc.sessionId : '',
+            currentTab: DualViewDoc.currentDoc ? DualViewDoc.currentDoc.sessionId : '',
             width: window.innerWidth
         };
         window.addEventListener('resize', this.onResize.bind(this));
@@ -38,7 +38,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         console.log('In MemViewToolbar.render');
         const docItems = [];
         let count = 0;
-        for (const doc of WebviewDoc.getDocumentsList()) {
+        for (const doc of DualViewDoc.getDocumentsList()) {
             docItems.push(
                 <VSCodeOption key={count} selected={doc.isCurrent} value={doc.sessionId}>
                     {doc.displayName}
@@ -51,7 +51,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 Add new view
             </VSCodeOption>
         );
-        const isModified = WebviewDoc.currentDoc?.isModified;
+        const isModified = DualViewDoc.currentDoc?.isModified;
         let key = 0;
         return (
             <div className='toolbar' style={{ width: 'auto' }}>

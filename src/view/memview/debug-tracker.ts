@@ -4,19 +4,14 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import events from 'events';
+import { DebugSessionSatus, ITrackedDebugSessionXfer } from './shared';
 
 export const TrackedDebuggers = [
     'cortex-debug',
-    'cppdbg'
+    'cppdbg',       // Microsoft debugger
+    'cspy'          // IAR debugger
 ];
 
-// An event is generated whenever the debugger status changes or when read/write capabilities change/discovered
-export interface ISessionEventArg {
-    session: ITrackedDebugSession
-    frameId?: number;           // May be available if status is 'running' (top of stack of current thread)
-}
-
-type DebugSessionSatus = 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';
 export interface ITrackedDebugSession {
     session: vscode.DebugSession;
     canWriteMemory: boolean | undefined;
@@ -25,7 +20,10 @@ export interface ITrackedDebugSession {
 }
 
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
-    static EventEmitter = new events.EventEmitter();
+    // Events: There is an event generated whenever the status changes. There is also
+    // a generic 'any' event. They all use the same arg of type ITrackedDebugSessionXfer
+    // There is an additional event used internally for read/write capability detection
+    public static eventEmitter = new events.EventEmitter();
 
     private static allSessionsById: { [sessionId: string]: ITrackedDebugSession } = {};
     private static allSessionsByConfigName: { [configName: string]: ITrackedDebugSession } = {};
@@ -43,6 +41,45 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
             DebuggerTracker.allSessionsByConfigName[session.name] = props;
             DebuggerTracker.setStatus(session, 'started');
         }
+    }
+
+    public static getCurrentSessionsSerializable(): ITrackedDebugSessionXfer[] {
+        const ret: ITrackedDebugSessionXfer[] = [];
+        for (const [_key, value] of Object.entries(DebuggerTracker.allSessionsById)) {
+            if (value.canReadMemory) {
+                ret.push(DebuggerTracker.toSerilazable(value));
+            }
+        }
+        return ret;
+    }
+
+    public static toSerilazable(value: ITrackedDebugSession): ITrackedDebugSessionXfer {
+        const tmp: ITrackedDebugSessionXfer = {
+            sessionId: value.session.id,
+            sessionName: value.session.name,
+            sessionType: value.session.type,
+            wsFolder: value.session.workspaceFolder?.uri.toString() || '.',
+            canWriteMemory: !!value.canWriteMemory,
+            canReadMemory: !!value.canReadMemory,
+            status: value.status
+        };
+        return tmp;
+    }
+
+    public static isValidSessionForMemory(id: string): string | boolean {
+        const session = DebuggerTracker.allSessionsById[id];
+        if (!session) {
+            return 'No session with the session id ' + id +
+                '. Probably a bug or a debugger type that we are not tracking';
+        }
+        if (!session.canReadMemory) {
+            return 'The current debugger does provide a memory read API';
+        }
+        return true;
+    }
+
+    public static getSessionById(id: string): ITrackedDebugSession {
+        return DebuggerTracker.allSessionsById[id];
     }
 
     public onDidSendMessage(msg: any): void {
@@ -90,7 +127,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                     } else if (rsp.success && continueCommands.includes(rsp.command)) {
                         DebuggerTracker.setStatus(this.session, 'running');
                     } else if (rsp.command === 'initialize') {
-                        const capabilities = rsp.body?.capabilities as DebugProtocol.Capabilities;
+                        const capabilities = rsp.body as DebugProtocol.Capabilities;
                         if (capabilities) {
                             DebuggerTracker.setCapabilities(this.session, capabilities);
                         }
@@ -131,11 +168,12 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         const props = DebuggerTracker.allSessionsById[s.id];
         if (props && (props.status !== status)) {
             props.status = status;
-            const arg: ISessionEventArg = {
-                session: props,
-                frameId: frameId
-            };
-            DebuggerTracker.EventEmitter.emit(status, arg);
+            const arg = DebuggerTracker.toSerilazable(props);
+            if (typeof frameId === 'number') {
+                arg.frameId = frameId;
+            }
+            DebuggerTracker.eventEmitter.emit(status, arg);
+            DebuggerTracker.eventEmitter.emit('any', arg);
         }
     }
 
@@ -143,7 +181,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         const props = DebuggerTracker.allSessionsById[s.id];
         props.canReadMemory = !!capabilities?.supportsReadMemoryRequest;
         props.canWriteMemory = !!capabilities?.supportsWriteMemoryRequest;
-        DebuggerTracker.EventEmitter.emit('capabilities', props);
+        DebuggerTracker.eventEmitter.emit('capabilities', props);
     }
 }
 
@@ -190,9 +228,9 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 function appendMsgToTmpDir(str: string) {
     try {
         // eslint-disable-next-line no-constant-condition
-        if (false) {
-            const fname = path.join(os.tmpdir(), 'rtos-msgs.txt');
-            console.log(`Write ${str} to file ${fname}`);
+        if (true) {
+            const fname = path.join(os.tmpdir(), 'memview-dbg-trace.txt');
+            // console.log(`Write ${str} to file ${fname}`);
             if (!str.endsWith('\n')) {
                 str = str + '\n';
             }

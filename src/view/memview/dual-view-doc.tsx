@@ -9,109 +9,52 @@
 
 import { vscodePostCommandNoResponse } from './webview-globals';
 import { Buffer } from 'buffer';
+import events from 'events';
+import {
+    IMemValue,
+    IMemoryInterfaceCommands,
+    IWebviewDocXfer,
+    ICmdGetMemory,
+    CmdType,
+    ICmdSetByte,
+    IWebviewDocInfo,
+    ModifiedXferMap,
+    DebugSessionSatus as DebugSessionStatus
+} from './shared';
 
-export enum CmdType {
-    GetDocuments = 'GetDocuments',
-    GetMemory = 'GetMemory',
-    SetByte = 'GetMemory'
-}
-
-export interface IResponse {
-    type: 'response' | 'command';
-    seq: number;
-    command: CmdType;
-    body: any;
-}
-
-export interface ICmdBase {
-    type: CmdType;
-    seq?: number; // Must be filled in before sending
-    sessionId: string; // Leave empty where session does not matter
-}
-
-export interface ICmdGetDocuments extends ICmdBase {
-    documents: IWebviewDocXfer[];
-}
-
-export interface MsgResponse {
-    request: ICmdBase;
-    resolve: (arg: any) => void;
-    resonse?: any;
-}
-
-export interface IMemviewDocumentOptions {
-    bytes: Uint8Array;
-    uriString: string;
-    fsPath: string;
-    isReadonly?: boolean;
-    memoryReference?: string;
-    expression?: string;
-    isFixedSize?: boolean;
-    initialSize?: number;
-}
-export interface ICmdGetMemory extends ICmdBase {
-    addr: string;
-    count: number;
-}
-
-export interface ICmdSetMemory extends ICmdGetMemory {
-    bytes: Uint8Array;
-}
-
-export interface ICmdSetByte extends ICmdBase {
-    addr: string;
-    value: number; // Positive number is new value, neg is deletion
-}
-
-export interface IMemValue {
-    cur: number;
-    orig: number;
-    stale: boolean;
-    inRange: boolean;
-}
-
-export interface IWebviewDocInfo {
-    displayName: string;
-    sessionId: string;
-    isModified: boolean;
-    isCurrent: boolean;
-}
-
-type ModifedXferMap = { [addr: string]: number };
-export interface IWebviewDocXfer {
-    sessionId: string; // The debug session ID, also the document Id
-    displayName: string;
-    startAddress: string;
-    isReadOnly: boolean; // Where to start reading.
-    currentAddress?: string; // When displayed, what address should be visible
-    isCurrentDoc?: boolean;
-    maxBytes?: number;
-    modifiedMap?: ModifedXferMap;
-}
-
-export interface IMemoryInterfaceCommands {
-    getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
-    setMemory(arg: ICmdSetMemory): Promise<boolean>;
+export interface IPageEventArg {
+    address: bigint;
 }
 
 export const DummyByte: IMemValue = { cur: -1, orig: -1, stale: true, inRange: false };
-export class WebviewDoc {
-    public static currentDoc: WebviewDoc | undefined;
+export class DualViewDoc {
+    // DO NOT CHANGE PageSize w/o adjusting getPageEventId to make sure we don't create too
+    // many event listeners to an address change SubPageSize so that we result in less than 10
+    // listeners per SubPageSize
+    public static readonly PageSize = 512;
+    public static readonly SubPageSize = 64;
+
+    // The idea is that each row subscribes to an event when that row changes, Each row
+    // should subscribe to their row-base-address to see if something changed using un/setPageEventId()
+    public eventEmitter = new events.EventEmitter();
+    public static currentDoc: DualViewDoc | undefined;
     public static currentDocStack: string[] = [];
-    public static allDocuments: { [key: string]: WebviewDoc } = {};
+    public static allDocuments: { [key: string]: DualViewDoc } = {};
     private static memoryIF: IMemoryInterfaceCommands;
     public static init(arg: IMemoryInterfaceCommands) {
-        WebviewDoc.memoryIF = arg;
+        DualViewDoc.memoryIF = arg;
     }
 
     public readonly baseAddress;
     private modifiedMap: Map<bigint, number> = new Map<bigint, number>();
-    public startAddress: bigint;
+    public readonly startAddress: bigint;
     public currentAddress: bigint;
-    public maxAddress: bigint;
+    public readonly maxAddress: bigint;
     public displayName: string;
     public isReadonly: boolean;
-    public readonly sessionId: string;
+    public sessionId: string;
+    public readonly sessionName: string;
+    public readonly wsFolder: string;
 
     // This part is serialized/deserialized on demand
     private memory: MemPages;
@@ -123,7 +66,9 @@ export class WebviewDoc {
         this.baseAddress = (this.startAddress / 16n) * 16n;
         this.maxAddress = this.startAddress + BigInt(info.maxBytes || 1024 * 1024);
         this.displayName = info.displayName;
+        this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
+        this.sessionName = info.sessionName;
         this.isReadonly = info.isReadOnly;
         if (info.modifiedMap) {
             // This map can contain values are are not actually yet in our memory
@@ -132,11 +77,73 @@ export class WebviewDoc {
             }
         }
         this.memory = new MemPages(this.baseAddress, this);
-        WebviewDoc.addDocument(this, !!info.isCurrentDoc);
+        DualViewDoc.addDocument(this, !!info.isCurrentDoc);
+    }
+
+    async getMemoryPage(addr: bigint, nBytes: number): Promise<Uint8Array> {
+        let ary = this.memory.getPageIfFresh(addr);
+        if (ary) {
+            return Promise.resolve(ary);
+        }
+        ary = undefined;
+        try {
+            ary = await this.getMemoryPageFromSource(addr, nBytes);
+        } catch (e) {}
+        if (!ary) {
+            ary = new Uint8Array(0);
+        } else if (ary.length > 0) {
+            this.memory.setPage(addr, ary);
+        }
+        return ary;
+    }
+
+    public static debuggerStatusChanged(
+        sessionId: string,
+        status: DebugSessionStatus,
+        sessionName: string,
+        wsFolder: string
+    ) {
+        const retired = [];
+        for (const [id, doc] of Object.entries(DualViewDoc.allDocuments)) {
+            if (id !== sessionId) {
+                if (
+                    status === 'started' &&
+                    sessionName === doc.sessionName &&
+                    doc.wsFolder === wsFolder
+                ) {
+                    // We found an orphaned document and a new debug session started that can now own it
+                    retired.push(id);
+                    doc.sessionId = sessionId;
+                    DualViewDoc.allDocuments[sessionId] = doc;
+                }
+            } else {
+                doc.isReady = status === 'stopped';
+                doc.memory.markAllStale();
+            }
+        }
+        for (const id of retired) {
+            // These ID's are now retired
+            delete DualViewDoc.allDocuments[id];
+        }
+    }
+
+    public static initializeAllDocuments(documents: IWebviewDocXfer[]) {
+        for (const item of documents) {
+            const xferObj = item as IWebviewDocXfer;
+            const doc = new DualViewDoc(xferObj);
+            doc.isReady = true;
+        }
+        if (Object.entries(DualViewDoc.allDocuments).length === 0) {
+            DualViewDoc.createDummyDoc();
+        }
+        if (!DualViewDoc.currentDoc) {
+            const [_key, doc] = Object.entries(DualViewDoc.allDocuments)[0];
+            DualViewDoc.setCurrentDoc(doc);
+        }
     }
 
     private static pendingRequests: { [key: string]: Promise<Uint8Array> } = {};
-    getMoreMemory(addr: bigint, nBytes: number): Promise<Uint8Array> {
+    getMemoryPageFromSource(addr: bigint, nBytes: number): Promise<Uint8Array> {
         const msg: ICmdGetMemory = {
             type: CmdType.GetMemory,
             sessionId: this.sessionId,
@@ -145,17 +152,17 @@ export class WebviewDoc {
             count: nBytes
         };
         const key = msg.addr + this.sessionId;
-        const oldPromise = WebviewDoc.pendingRequests[key];
+        const oldPromise = DualViewDoc.pendingRequests[key];
         if (oldPromise) {
             return oldPromise;
         }
-        const promise = WebviewDoc.memoryIF.getMemory(msg);
-        WebviewDoc.pendingRequests[key] = promise;
+        const promise = DualViewDoc.memoryIF.getMemory(msg);
+        DualViewDoc.pendingRequests[key] = promise;
         return promise;
     }
     removeFromPendingRequests(addr: bigint) {
         const key = addr.toString() + this.sessionId;
-        delete WebviewDoc.pendingRequests[key];
+        delete DualViewDoc.pendingRequests[key];
     }
 
     addrInRange(addr: bigint): boolean {
@@ -163,11 +170,11 @@ export class WebviewDoc {
     }
 
     static getDocumentById(id: string) {
-        return WebviewDoc.allDocuments[id];
+        return DualViewDoc.allDocuments[id];
     }
 
     static async getCurrentDocByte(addr: bigint): Promise<IMemValue> {
-        const doc = WebviewDoc.currentDoc;
+        const doc = DualViewDoc.currentDoc;
         if (doc && doc.addrInRange(addr)) {
             const o = await doc.memory.getValue(addr, !doc.isReady);
             const orig = o === undefined ? -1 : o;
@@ -185,7 +192,7 @@ export class WebviewDoc {
     }
 
     static getRowUnsafe(addr: bigint): IMemValue[] {
-        const doc = WebviewDoc.currentDoc;
+        const doc = DualViewDoc.currentDoc;
         if (doc && doc.addrInRange(addr)) {
             const orig = doc.memory.getRowSync(addr);
             const ret: IMemValue[] = [];
@@ -213,7 +220,7 @@ export class WebviewDoc {
 
     // Only for webviews. Will fail on VSCode side -- use setByteLocal() instead
     static setCurrentDocByte(addr: bigint, val: number) {
-        const doc = WebviewDoc.currentDoc;
+        const doc = DualViewDoc.currentDoc;
         if (doc) {
             const old = doc.setByteLocal(addr, val);
             const cmd: ICmdSetByte = {
@@ -236,54 +243,70 @@ export class WebviewDoc {
         return old;
     }
 
-    private static addDocument(doc: WebviewDoc, makeCurrent = false) {
-        WebviewDoc.allDocuments[doc.sessionId] = doc;
+    private static addDocument(doc: DualViewDoc, makeCurrent = false) {
+        DualViewDoc.allDocuments[doc.sessionId] = doc;
         if (makeCurrent) {
-            WebviewDoc.setCurrentDoc(doc);
+            DualViewDoc.setCurrentDoc(doc);
         }
     }
 
-    static removeDocument(docOrId: WebviewDoc | string) {
-        const id = (docOrId as string) || (docOrId as WebviewDoc).sessionId;
-        const doc = WebviewDoc.allDocuments[id];
-        if (doc === WebviewDoc.currentDoc) {
-            WebviewDoc.currentDoc = undefined;
-            while (WebviewDoc.currentDocStack.length) {
-                const oldId = WebviewDoc.currentDocStack.pop();
-                if (oldId && WebviewDoc.allDocuments[oldId]) {
-                    WebviewDoc.currentDoc = WebviewDoc.allDocuments[oldId];
+    static removeDocument(docOrId: DualViewDoc | string) {
+        const id = (docOrId as string) || (docOrId as DualViewDoc).sessionId;
+        const doc = DualViewDoc.allDocuments[id];
+        if (doc === DualViewDoc.currentDoc) {
+            DualViewDoc.currentDoc = undefined;
+            while (DualViewDoc.currentDocStack.length) {
+                const oldId = DualViewDoc.currentDocStack.pop();
+                if (oldId && DualViewDoc.allDocuments[oldId]) {
+                    DualViewDoc.currentDoc = DualViewDoc.allDocuments[oldId];
                     break;
                 }
             }
         }
-        delete WebviewDoc.allDocuments[id];
+        delete DualViewDoc.allDocuments[id];
     }
 
-    static setCurrentDoc(docOrId: WebviewDoc | string) {
+    static setCurrentDoc(docOrId: DualViewDoc | string) {
         const id: string =
-            typeof docOrId === 'string' ? (docOrId as string) : (docOrId as WebviewDoc).sessionId;
-        const doc = WebviewDoc.allDocuments[id];
+            typeof docOrId === 'string' ? (docOrId as string) : (docOrId as DualViewDoc).sessionId;
+        const doc = DualViewDoc.allDocuments[id];
         if (doc) {
-            if (WebviewDoc.currentDoc) {
-                WebviewDoc.currentDocStack.push(WebviewDoc.currentDoc.sessionId);
+            if (DualViewDoc.currentDoc) {
+                DualViewDoc.currentDocStack.push(DualViewDoc.currentDoc.sessionId);
             }
-            WebviewDoc.currentDoc = doc;
+            DualViewDoc.currentDoc = doc;
         }
     }
 
     static getDocumentsList(): IWebviewDocInfo[] {
         const ret: IWebviewDocInfo[] = [];
-        for (const key of Object.getOwnPropertyNames(WebviewDoc.allDocuments)) {
-            const doc = WebviewDoc.allDocuments[key];
+        for (const key of Object.getOwnPropertyNames(DualViewDoc.allDocuments)) {
+            const doc = DualViewDoc.allDocuments[key];
             const tmp: IWebviewDocInfo = {
                 displayName: doc.displayName,
                 sessionId: doc.sessionId,
                 isModified: doc.isModified(),
-                isCurrent: doc === WebviewDoc.currentDoc
+                isCurrent: doc === DualViewDoc.currentDoc
             };
             ret.push(tmp);
         }
         return ret;
+    }
+
+    static setPageEventId(addr: bigint, cb: (arg: IPageEventArg) => void) {
+        const doc = DualViewDoc.currentDoc;
+        if (doc) {
+            const eventId = doc.memory.getPageEventId(addr);
+            doc.eventEmitter.addListener(eventId, cb);
+        }
+    }
+
+    static unsetPageEventId(addr: bigint, cb: (arg: IPageEventArg) => void) {
+        const doc = DualViewDoc.currentDoc;
+        if (doc) {
+            const eventId = doc.memory.getPageEventId(addr);
+            doc.eventEmitter.removeListener(eventId, cb);
+        }
     }
 
     isModified(): boolean {
@@ -291,17 +314,19 @@ export class WebviewDoc {
     }
 
     getSerializable(): IWebviewDocXfer {
-        const newMap: ModifedXferMap = {};
+        const newMap: ModifiedXferMap = {};
         this.modifiedMap.forEach((value, key) => {
             newMap[key.toString()] = value;
         });
         const tmp: IWebviewDocXfer = {
             sessionId: this.sessionId,
+            sessionName: this.sessionName,
             displayName: this.displayName,
+            wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             currentAddress: this.currentAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
-            isCurrentDoc: this === WebviewDoc.currentDoc,
+            isCurrentDoc: this === DualViewDoc.currentDoc,
             modifiedMap: newMap,
             isReadOnly: this.isReadonly
         };
@@ -309,20 +334,21 @@ export class WebviewDoc {
     }
 
     public static createDummyDoc() {
-        let initString =
+        const initString =
             'Please add a new view using the dropdown menu above when a C/C++ like debugger is active. ' +
-            'We currently have support for "cppdbg" and "cortex-debug"';
-        initString = initString.replace(/ /g, '.');
+            'We currently have support for cppdbg, cortex-debug, and cspy';
         const tmp: IWebviewDocXfer = {
             sessionId: 'Dummy',
+            sessionName: 'Unknown',
             displayName: 'No memory view',
+            wsFolder: '.',
             startAddress: '0',
             maxBytes: initString.length,
             isCurrentDoc: true,
             isReadOnly: true
         };
-        const doc = new WebviewDoc(tmp);
-        doc.memory.createDummyPage(initString);
+        const doc = new DualViewDoc(tmp);
+        doc.memory.createDummyPage(initString.replace(/ /g, '.'));
     }
 }
 
@@ -340,9 +366,8 @@ interface IMemPage {
     buffer: Uint8Array;
 }
 class MemPages {
-    public static readonly BucketSize = 512;
     private pages: IMemPage[] = [];
-    constructor(private baseAddress: bigint, private parentDoc: WebviewDoc) {}
+    constructor(private baseAddress: bigint, private parentDoc: DualViewDoc) {}
 
     createDummyPage(str: string) {
         const tmp: IMemPage = {
@@ -353,8 +378,51 @@ class MemPages {
     }
 
     private getSlot(addr: bigint): number {
-        const slot = Math.floor(Number(addr - this.baseAddress) / MemPages.BucketSize);
+        const slot = Math.floor(Number(addr - this.baseAddress) / DualViewDoc.PageSize);
         return slot;
+    }
+
+    public markAllStale() {
+        for (const page of this.pages) {
+            page.stale = true;
+        }
+    }
+
+    public getPageEventId(addr: bigint): string {
+        const slot = this.getSlot(addr);
+        const subSlot = Math.floor(Number(addr - this.baseAddress) / DualViewDoc.SubPageSize);
+        const ret = `address-${slot}-${subSlot}`;
+        return ret;
+    }
+
+    getPageIfFresh(addr: bigint): Uint8Array | undefined {
+        const slot = this.getSlot(addr);
+        return slot < this.pages.length && !this.pages[slot].stale
+            ? this.pages[slot].buffer
+            : undefined;
+    }
+
+    setPage(addr: bigint, ary: Uint8Array) {
+        const slot = this.getSlot(addr);
+        this.growPages(slot);
+        const old = this.pages[slot].buffer;
+        const eventId = this.getPageEventId(addr);
+        for (let ix = 0; ix < ary.length && ix < old.length; ix += 16) {
+            for (let iy = 0; iy < 16; iy++) {
+                const index = ix + iy;
+                if (index >= ary.length || index >= old.length) {
+                    break;
+                }
+                if (old[index] != old[index]) {
+                    this.parentDoc.eventEmitter.emit(eventId, {
+                        address: addr + BigInt(index)
+                    });
+                    break;
+                }
+            }
+        }
+        this.pages[slot].buffer = ary;
+        this.pages[slot].stale = false;
     }
 
     public isStale(addr: bigint): boolean {
@@ -365,7 +433,7 @@ class MemPages {
     public getValueSync(addr: bigint): number {
         const slot = this.getSlot(addr);
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        const offset = Number(addr - BigInt(slot * MemPages.BucketSize));
+        const offset = Number(addr - BigInt(slot * DualViewDoc.PageSize));
         const buf = page ? page.buffer : undefined;
         return buf && offset < buf.length ? buf[offset] : -1;
     }
@@ -373,7 +441,7 @@ class MemPages {
     public getRowSync(addr: bigint): number[] {
         const slot = this.getSlot(addr);
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        let offset = Number(addr - BigInt(slot * MemPages.BucketSize));
+        let offset = Number(addr - BigInt(slot * DualViewDoc.PageSize));
         const buf = page ? page.buffer : undefined;
         const ret: number[] = [];
         for (let ix = 0; ix < 16; ix++, offset++) {
@@ -386,7 +454,7 @@ class MemPages {
         const slot = this.getSlot(addr);
         let page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
         const get = () => {
-            const offset = Number(addr - BigInt(slot * MemPages.BucketSize));
+            const offset = Number(addr - BigInt(slot * DualViewDoc.PageSize));
             const buf = page ? page.buffer : undefined;
             return buf && offset < buf.length ? buf[offset] : -1;
         };
@@ -394,18 +462,12 @@ class MemPages {
             return get();
         }
         if (!page || page.stale || !page.buffer.length) {
-            const blockAddr = this.baseAddress + BigInt(slot * MemPages.BucketSize);
+            const blockAddr = this.baseAddress + BigInt(slot * DualViewDoc.PageSize);
             return new Promise((resolve) => {
                 this.parentDoc
-                    .getMoreMemory(blockAddr, MemPages.BucketSize)
+                    .getMemoryPageFromSource(blockAddr, DualViewDoc.PageSize)
                     .then((buf) => {
-                        for (let i = this.pages.length; i <= slot; i++) {
-                            page = {
-                                stale: true,
-                                buffer: new Uint8Array(0)
-                            };
-                            this.pages.push(page);
-                        }
+                        this.growPages(slot);
                         page = this.pages[slot];
                         if (page?.stale) {
                             page = {
@@ -429,13 +491,23 @@ class MemPages {
         }
     }
 
+    private growPages(slot: number) {
+        for (let i = this.pages.length; i <= slot; i++) {
+            const page = {
+                stale: true,
+                buffer: new Uint8Array(0)
+            };
+            this.pages.push(page);
+        }
+    }
+
     setValue(addr: bigint, val: number /* byte actually */, useThrow = false): void {
         const slot = this.getSlot(addr);
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        const offset = Number(addr - BigInt(slot * MemPages.BucketSize));
+        const offset = Number(addr - BigInt(slot * DualViewDoc.PageSize));
         if (!page || offset >= page.buffer.length) {
             if (useThrow) {
-                const maxAddr = this.baseAddress + BigInt(this.pages.length * MemPages.BucketSize);
+                const maxAddr = this.baseAddress + BigInt(this.pages.length * DualViewDoc.PageSize);
                 throw new Error(
                     `Requested address ${addr}. base address = ${this.baseAddress}, max address = ${maxAddr}`
                 );

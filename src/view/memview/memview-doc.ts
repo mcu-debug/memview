@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { readFileSync } from 'node:fs';
-import { WebviewDoc, IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType, IResponse, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions } from './webview-doc';
+import { DualViewDoc } from './dual-view-doc';
+import { IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType, IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer } from './shared';
+import { DebuggerTracker } from './debug-tracker';
+import { DebugProtocol } from '@vscode/debugprotocol';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -204,9 +207,11 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         context.subscriptions.push(
             vscode.window.registerWebviewViewProvider(MemViewPanelProvider.viewType, MemViewPanelProvider.Provider),
         );
+        DualViewDoc.init(new DebuggerIF());
     }
 
     constructor(public context: vscode.ExtensionContext) {
+        DebuggerTracker.eventEmitter.on('any', this.debuggerStatusChanged.bind(this));
     }
 
     resolveWebviewView(
@@ -226,7 +231,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
             this.webviewView = undefined;
         });
 
-        this.webviewView.onDidChangeVisibility((e) => {
+        this.webviewView.onDidChangeVisibility(() => {
             console.log('Visibility = ', this.webviewView?.visible);
         });
         webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
@@ -241,11 +246,15 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                 const body: any = msg.body as ICmdBase;
                 if (!body) { break; }
                 switch (body.type) {
+                    case CmdType.GetDebuggerSessions: {
+                        this.sendAllDebuggerSessions(body);
+                        break;
+                    }
                     case CmdType.GetMemory: {
-                        const doc = WebviewDoc.getDocumentById(body.sessionId);
+                        const doc = DualViewDoc.getDocumentById(body.sessionId);
                         if (doc) {
                             const memCmd = (body as ICmdGetMemory);
-                            doc.getMoreMemory(BigInt(memCmd.addr), memCmd.count).then((b) => {
+                            doc.getMemoryPage(BigInt(memCmd.addr), memCmd.count).then((b) => {
                                 this.postResponse(body, b);
                             });
                         } else {
@@ -255,7 +264,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                     }
                     case CmdType.GetDocuments: {
                         const docs = [];
-                        for (const [_key, value] of Object.entries(WebviewDoc.allDocuments)) {
+                        for (const [_key, value] of Object.entries(DualViewDoc.allDocuments)) {
                             const doc = value.getSerializable();
                             docs.push(doc);
                         }
@@ -263,7 +272,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                         break;
                     }
                     case CmdType.SetByte: {
-                        const doc = WebviewDoc.getDocumentById(body.sessionId);
+                        const doc = DualViewDoc.getDocumentById(body.sessionId);
                         if (doc) {
                             const memCmd = (body as ICmdSetByte);
                             doc.setByteLocal(BigInt(memCmd.addr), memCmd.value);
@@ -283,13 +292,41 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
     }
 
     private postResponse(msg: ICmdBase, body: any) {
-        const obj: IResponse = {
+        const obj: IMessage = {
             type: 'response',
             seq: msg.seq ?? 0,
             command: msg.type,
             body: body
         };
         this.webviewView?.webview.postMessage(obj);
+    }
+
+    private postNotice(msg: ICmdBase, body: any) {
+        const obj: IMessage = {
+            type: 'notice',
+            seq: msg.seq ?? 0,
+            command: msg.type,
+            body: body
+        };
+        this.webviewView?.webview.postMessage(obj);
+    }
+
+    private debuggerStatusChanged(arg: ITrackedDebugSessionXfer) {
+        if (this.webviewView?.visible) {
+            DualViewDoc.debuggerStatusChanged(arg.sessionId, arg.status, arg.sessionName, arg.wsFolder);
+            const msg: ICmdBase = {
+                type: CmdType.DebugerStatus,
+                sessionId: arg.sessionId
+            };
+            this.postNotice(msg, arg);
+        }
+    }
+
+    private sendAllDebuggerSessions(msg: ICmdBase) {
+        if (this.webviewView?.visible) {
+            const allSessions = DebuggerTracker.getCurrentSessionsSerializable();
+            this.postResponse(msg, allSessions);
+        }
     }
 
     private updateHtmlForInit() {
@@ -299,17 +336,82 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    static addMemnoryView(session: vscode.DebugSession, expr: string) {
+        expr = expr.trim();
+        MemViewPanelProvider.getExprResult(session, expr).then((addr) => {
+            const sessonInfo = DebuggerTracker.getSessionById(session.id);
+            const props: IWebviewDocXfer = {
+                sessionId: session.id,
+                sessionName: session.name,
+                displayName: expr,
+                wsFolder: session.workspaceFolder?.uri.toString() || '.',
+                startAddress: addr,
+                isReadOnly: !sessonInfo.canWriteMemory,
+                isCurrentDoc: true,
+            };
+            new DualViewDoc(props);
+            MemViewPanelProvider.Provider.updateHtmlForInit();
+        });
+    }
+
+    static getExprResult(session: vscode.DebugSession, expr: string): Promise<string> {
+        const isHexOrDec = (expr: string): boolean => {
+            return /^0x[0-9a-f]+$/i.test(expr) || /^[0-9]+$/i.test(expr);
+        };
+        if (isHexOrDec(expr)) {
+            return Promise.resolve(expr);
+        }
+        return new Promise<string>((resolve, reject) => {
+            const arg: DebugProtocol.EvaluateArguments = {
+                frameId: undefined,
+                expression: expr,
+                context: 'hover'
+            };
+            session.customRequest('evaluate', arg).then((result) => {
+                if (result.memoryReference) {
+                    resolve(result.memoryReference);
+                    return;
+                }
+                if (result.result) {
+                    let res: string = result.result.trim().toLocaleLowerCase();
+                    if (res.startsWith('0x')) {
+                        const ary = res.match(/^0x[0-9a-f]+/);
+                        if (ary) {
+                            res = ary[1];
+                            resolve(res);
+                            return;
+                        }
+                    } else {
+                        const ary = res.match(/^[0-9]+/);
+                        if (ary) {
+                            res = ary[1];
+                            resolve(res);
+                            return;
+                        }
+                    }
+                    reject(new Error(`Expression '${expr}' failed to evaluate to a proper value ${res}`));
+                } else {
+                    reject(new Error(`Expression '${expr}' failed to yield a proper result. Got ${JSON.stringify(result)}`));
+                }
+            }), (e: any) => {
+                reject(new Error(`Expression '${expr}' threw an error. ${JSON.stringify(e)}`));
+            };
+        });
+    }
+
     static doTest(path: string) {
         const props: IWebviewDocXfer = {
             sessionId: getNonce(),
+            sessionName: 'blah',
             displayName: '0xdeadbeef',
+            wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,
             isCurrentDoc: true,
         };
         const buf = readFileSync(path);
-        WebviewDoc.init(new mockDebugger(buf, 0n));
-        const newDoc = new WebviewDoc(props);
+        DualViewDoc.init(new mockDebugger(buf, 0n));
+        new DualViewDoc(props);
         MemViewPanelProvider.Provider.updateHtmlForInit();
     }
 }
@@ -327,6 +429,41 @@ class mockDebugger implements IMemoryInterfaceCommands {
     }
     setMemory(_arg: ICmdSetMemory): Promise<boolean> {
         return Promise.resolve(true);
+    }
+}
+
+class DebuggerIF implements IMemoryInterfaceCommands {
+    getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
+        const memArg: DebugProtocol.ReadMemoryArguments = {
+            memoryReference: arg.addr,
+            count: arg.count
+        };
+        return new Promise<Uint8Array>((resolve) => {
+            const session = DebuggerTracker.getSessionById(arg.sessionId);
+            if (!session || (session.status !== 'stopped')) {
+                return resolve(new Uint8Array(0));
+            }
+            session.session.customRequest('readMemory', memArg).then((result) => {
+                const buf = Buffer.from(result.data, 'base64');
+                const ary = new Uint8Array(buf);
+                return resolve(ary);
+            }), ((e: any) => {
+                debugConsoleMessage(e, arg);
+                return resolve(new Uint8Array(0));
+            });
+        });
+    }
+    setMemory(_arg: ICmdSetMemory): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+}
+
+
+function debugConsoleMessage(e: any, arg: ICmdGetMemory) {
+    const con = vscode.debug.activeDebugConsole;
+    if (con) {
+        const msg = e instanceof Error ? e.message : e ? e.toString() : 'Unknown error';
+        con.appendLine(`Memview: Failed to read memory @ ${arg.addr}. ` + msg);
     }
 }
 

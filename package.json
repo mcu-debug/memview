@@ -14,7 +14,8 @@
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
         "onCommand:memview.hello",
-        "onCommand:memview.toggleMemoryView"
+        "onCommand:memview.toggleMemoryView",
+        "onCommand:memview.addMemoryView"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -28,6 +29,11 @@
                 "category": "MemoryView",
                 "command": "memview.toggleMemoryView",
                 "title": "Toggle Debugger Memory View Panel/Webview"
+            },
+            {
+                "category": "MemoryView",
+                "command": "memview.addMemoryView",
+                "title": "Add new memory view (for debugger)"
             }
         ],
         "customEditors": [
@@ -119,6 +125,7 @@
         "@vscode/webview-ui-toolkit": "^1.0.0",
         "buffer": "^6.0.3",
         "clsx": "^1.2.1",
+        "events": "^3.3.0",
         "patch-package": "^6.4.7",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",

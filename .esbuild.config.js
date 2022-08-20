@@ -49,7 +49,7 @@ esbuild.build({
 
 // Build the webview editors
 esbuild.build({
-  entryPoints: ['src/view/hexview/index.tsx'],
+  entryPoints: ['src/view/memview/index.tsx'],
 	tsconfig: "./tsconfig.json",
   bundle: true,
 	external: ['vscode'],

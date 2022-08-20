@@ -10,7 +10,8 @@ import {
     useRecoilValue,
     useSetRecoilState
 } from 'recoil';
-import { WebviewDoc, IMemValue, DummyByte } from './webview-doc';
+import { DualViewDoc, DummyByte } from './dual-view-doc';
+import { IMemValue } from './shared';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IHexCell {
@@ -61,7 +62,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         const intVal = parseInt(val, 16);
         if (this.props.byteInfo.cur !== intVal) {
             this.props.byteInfo.cur = intVal;
-            WebviewDoc.setCurrentDocByte(this.props.address, intVal);
+            DualViewDoc.setCurrentDocByte(this.props.address, intVal);
             if (this.props.onChange) {
                 this.props.onChange(this.props.address, intVal);
             }
@@ -75,7 +76,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     };
 
     editable = () => {
-        return !this.state.frozen && !WebviewDoc.currentDoc?.isReadonly;
+        return !this.state.frozen && !DualViewDoc.currentDoc?.isReadonly;
     };
 
     public onKeyDown(event: any) {
@@ -308,12 +309,12 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     private async getBytes() {
-        await WebviewDoc.getCurrentDocByte(this.props.address);
+        await DualViewDoc.getCurrentDocByte(this.props.address);
         // Since we are async, we can get unmounted while we wait
         if (this.mountStatus) {
             // Get the first byte of the row. The rest should be in the same page
             // so do it the fast way, since the bytes should have been loaded by now
-            const ret = WebviewDoc.getRowUnsafe(this.props.address);
+            const ret = DualViewDoc.getRowUnsafe(this.props.address);
             this.setState({ bytes: ret });
         }
     }
@@ -362,33 +363,9 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
 
 export interface IHexTable {
     address: bigint; // Address of first byte ie. bytes[byteOffset];
-    byteStart: number;
     numBytes: number;
     dirty: boolean;
     onChange?: OnCellChangeFunc;
-}
-
-export function HexTable(props: IHexTable): JSX.Element {
-    const header = <HexHeaderRow key='h' address={props.address} />;
-    const rows = [];
-    let offset = props.byteStart;
-    const startAddr = (props.address / 16n) * 16n;
-    const endAddr = ((props.address + BigInt(props.numBytes + 15)) / 16n) * 16n;
-    for (let addr = startAddr; addr < endAddr; addr += 16n, offset += 16) {
-        rows.push(
-            <HexDataRow key={offset} address={addr} dirty={props.dirty} onChange={props.onChange} />
-        );
-    }
-
-    const timer = new Utils.Timekeeper();
-    const ret = (
-        <div id='hex-grid' className='hex-grid'>
-            {header}
-            <div className='hex-data-rows'>{rows}</div>
-        </div>
-    );
-    console.log(`Top-level:render ${timer.deltaMs()}ms`);
-    return ret;
 }
 
 export interface IHexCellEditProps {

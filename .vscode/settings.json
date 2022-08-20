@@ -15,11 +15,13 @@
         "codicon",
         "codicons",
         "cppdbg",
+        "cspy",
         "esbuild",
         "hanlders",
         "Memview",
         "overscan",
-        "svgr"
+        "svgr",
+        "Xfer"
     ],
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,

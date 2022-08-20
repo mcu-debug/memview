@@ -3,7 +3,7 @@ import React from 'react';
 import { AutoSizer, IndexRange, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
-import { WebviewDoc } from './webview-doc';
+import { DualViewDoc } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 
 interface IHexTableState {
@@ -58,9 +58,6 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
 
     private rowHeightDetected = false;
     async componentDidMount() {
-        const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
-        const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
-        await this.loadMore({ startIndex: top, stopIndex: top + want });
         if (!this.lineHeightDetectTimer && !this.rowHeightDetected) {
             this.lineHeightDetectTimer = setInterval(() => {
                 const elt = document.querySelector('.hex-cell-value');
@@ -81,6 +78,11 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
                 }
             }, 250);
         }
+        try {
+            const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
+            const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
+            await this.loadMore({ startIndex: top, stopIndex: top + want });
+        } catch (e) {}
     }
 
     private scrollSettingTimeout: NodeJS.Timeout | undefined;
@@ -102,7 +104,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
             const newItems = this.actuallyLoadMore(params);
             const promises = [];
             for (const item of newItems) {
-                promises.push(WebviewDoc.getCurrentDocByte(item.address));
+                promises.push(DualViewDoc.getCurrentDocByte(item.address));
             }
             Promise.all(promises)
                 .catch((e) => {
@@ -118,7 +120,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         // We intentionally copy the items to force a state change.
         const items = this.state.items ? [...this.state.items] : [];
         const newItems = [];
-        let changed;
+        let changed = false;
         for (let ix = items.length; ix <= params.stopIndex; ix++) {
             const addr = this.props.address + BigInt(ix * 16);
             if (addr >= this.endAddr) {
@@ -130,7 +132,11 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
                 onChange: this.props.onChange
             };
             items.push(tmp);
-            newItems.push(tmp);
+            if (ix >= params.startIndex && ix <= params.stopIndex) {
+                // Actual items requested, ignore any fillers, so we prime only the right rows for rendering
+                // By priming, we mean load from debugger/vscode
+                newItems.push(tmp);
+            }
             changed = true;
         }
         // Nothing changed
