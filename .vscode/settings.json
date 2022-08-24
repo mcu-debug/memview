@@ -21,6 +21,7 @@
         "Memview",
         "overscan",
         "svgr",
+        "webviews",
         "Xfer"
     ],
     "editor.defaultFormatter": "esbenp.prettier-vscode",

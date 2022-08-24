@@ -1,22 +1,21 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as React from 'react';
-import { myGlobals, frozenState } from './webview-globals';
-import * as Utils from './utils';
-import {
+import /* frozenState */ './webview-globals';
+import /*
     RecoilRoot,
     atom,
     selector,
     useRecoilState,
     useRecoilValue,
     useSetRecoilState
-} from 'recoil';
-import { DualViewDoc, DummyByte } from './dual-view-doc';
+    */
+'recoil';
+import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { IMemValue } from './shared';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IHexCell {
     address: bigint;
-    dirty: boolean;
     byteInfo: IMemValue;
     onChange?: OnCellChangeFunc;
 }
@@ -42,7 +41,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     classNames = () => {
         return (
             'hex-cell hex-cell-value' +
-            (this.props.dirty || this.state.frozen ? ' hex-cell-value-dirty' : '') +
+            (this.state.frozen ? ' hex-cell-value-dirty' : '') +
             (this.props.byteInfo.orig !== this.props.byteInfo.cur ? ' hex-cell-value-changed' : '')
         );
     };
@@ -142,7 +141,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
             try {
                 HexCellValue.selectItem(ev.currentTarget);
             } catch {
-                console.log('HexCellValue.selectItem failed');
+                console.error('HexCellValue.selectItem failed');
             }
             document.addEventListener('keydown', this.onKeyDownFunc, false);
             HexCellValue.lastGoodValue = this.valueStr();
@@ -279,7 +278,6 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 
 export interface IHexDataRow {
     address: bigint;
-    dirty: boolean;
     onChange?: OnCellChangeFunc;
     style?: any;
     cls?: string;
@@ -290,6 +288,8 @@ interface IHexDataRowState {
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
+    private sessionId = 'unknown';
+    private sessionStatus = 'unknown';
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
     constructor(public props: IHexDataRow) {
@@ -298,7 +298,9 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         for (let ix = 0; ix < 16; ix++) {
             bytes[ix] = DummyByte;
         }
-        this.state = { bytes: bytes };
+        this.state = {
+            bytes: bytes
+        };
     }
 
     private async rowChanged(address: bigint, newVal: number) {
@@ -320,15 +322,36 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     async componentDidMount() {
+        DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         this.mountStatus = true;
         await this.getBytes();
     }
 
     componentWillUnmount() {
+        DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
+        console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
         this.mountStatus = false;
     }
 
+    private onGlobalEventFunc = this.onGlobalEvent.bind(this);
+    private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+        console.log(`In HexDataRow.onGlobalEvent() ${this.props.address}`);
+        let modified = false;
+        if (arg.sessionId !== this.sessionId) {
+            this.sessionId = arg.sessionId || this.sessionId;
+            modified = true;
+        }
+        if (arg.sessionStatus !== this.sessionStatus) {
+            this.sessionStatus = arg.sessionStatus || this.sessionStatus;
+            modified = true;
+        }
+        if (modified) {
+            this.getBytes(); // TODO: Is this safe to do right now? SHould we wait? how?
+        }
+    }
+
     render() {
+        // console.log(`In HexDataRow.render() ${this.props.address}`);
         const classNames = 'hex-data-row ' + (this.props.cls || '');
         const values = [];
         const chars = [];
@@ -339,7 +362,6 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                     key={ix + 2}
                     address={addr}
                     byteInfo={this.state.bytes[ix]}
-                    dirty={this.props.dirty}
                     onChange={this.onRowChangeFunc}
                 />
             );
@@ -360,14 +382,6 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         );
     }
 }
-
-export interface IHexTable {
-    address: bigint; // Address of first byte ie. bytes[byteOffset];
-    numBytes: number;
-    dirty: boolean;
-    onChange?: OnCellChangeFunc;
-}
-
 export interface IHexCellEditProps {
     trigger: boolean;
     clientX: number;

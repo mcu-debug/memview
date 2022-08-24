@@ -1,10 +1,15 @@
+import { IMemPages } from './dual-view-doc';
+
+
 export enum CmdType {
     GetDocuments = 'GetDocuments',
     GetMemory = 'GetMemory',
     SetByte = 'GetMemory',
     DebugerStatus = 'DebuggerStatus',
     GetDebuggerSessions = 'DebuggerSessions',
-    NewDocument = 'NewDocument'
+    NewDocument = 'NewDocument',
+    SaveClientState = 'SaveClientState',
+    GetBaseAddress = 'GetBaseAddress'
 }
 
 export interface IMessage {
@@ -45,6 +50,11 @@ export interface ICmdGetMemory extends ICmdBase {
     count: number;
 }
 
+export interface ICmdGetBaseAddress extends ICmdBase {
+    expr: string;
+    def: string;
+}
+
 export interface ICmdSetMemory extends ICmdGetMemory {
     bytes: Uint8Array;
 }
@@ -64,6 +74,7 @@ export interface IMemValue {
 export interface IWebviewDocInfo {
     displayName: string;
     sessionId: string;
+    sessionStatus: string;
     isModified: boolean;
     isCurrent: boolean;
 }
@@ -79,14 +90,22 @@ export interface IWebviewDocXfer {
     isCurrentDoc?: boolean;
     maxBytes?: number;
     modifiedMap?: ModifiedXferMap;
+    memory?: IMemPages;
+    baseAddressStale: boolean;
+    clientState: { [key: string]: any };
+}
+
+export interface ICmdClientState extends ICmdBase {
+    state: { [key: string]: any };
 }
 
 export interface IMemoryInterfaceCommands {
+    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string>;
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
 }
 
-export type DebugSessionSatus = 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';
+export type DebugSessionStatus = 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';
 
 export interface ITrackedDebugSessionXfer {
     sessionId: string;
@@ -95,6 +114,6 @@ export interface ITrackedDebugSessionXfer {
     wsFolder: string;
     canWriteMemory: boolean;
     canReadMemory: boolean;
-    status: DebugSessionSatus;
+    status: DebugSessionStatus;
     frameId?: number;
 }

@@ -2,7 +2,11 @@ import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { readFileSync } from 'node:fs';
 import { DualViewDoc } from './dual-view-doc';
-import { IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType, IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer } from './shared';
+import {
+    IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
+    IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
+    ICmdClientState, ICmdGetBaseAddress
+} from './shared';
 import { DebuggerTracker } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
 
@@ -198,20 +202,41 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
 }
 
 export class MemViewPanelProvider implements vscode.WebviewViewProvider {
+    private static context: vscode.ExtensionContext;
     private static readonly viewType = 'memview.memView';
+    private static readonly stateVersion = 1;
+    private static readonly stateKeyName = 'documents';
     private static Provider: MemViewPanelProvider;
     private webviewView: vscode.WebviewView | undefined;
 
     public static register(context: vscode.ExtensionContext) {
+        MemViewPanelProvider.context = context;
         MemViewPanelProvider.Provider = new MemViewPanelProvider(context);
         context.subscriptions.push(
             vscode.window.registerWebviewViewProvider(MemViewPanelProvider.viewType, MemViewPanelProvider.Provider),
         );
         DualViewDoc.init(new DebuggerIF());
+        const ver = context.workspaceState.get('version');
+        if (ver === MemViewPanelProvider.stateVersion) {
+            const obj = context.workspaceState.get(MemViewPanelProvider.stateKeyName);
+            const saved = obj as IWebviewDocXfer[];
+            if (saved) {
+                DualViewDoc.restoreSerializableAll(saved, false);
+            }
+        }
     }
 
     constructor(public context: vscode.ExtensionContext) {
+        MemViewPanelProvider.context = context;
         DebuggerTracker.eventEmitter.on('any', this.debuggerStatusChanged.bind(this));
+    }
+
+    static saveState() {
+        const state = MemViewPanelProvider.context.workspaceState;
+        const obj = DualViewDoc.storeSerializableAll(true);
+        console.log(obj);
+        state.update('version', MemViewPanelProvider.stateVersion);
+        state.update(MemViewPanelProvider.stateKeyName, obj);
     }
 
     resolveWebviewView(
@@ -250,6 +275,18 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                         this.sendAllDebuggerSessions(body);
                         break;
                     }
+                    case CmdType.GetBaseAddress: {
+                        const doc = DualViewDoc.getDocumentById(body.sessionId);
+                        const memCmd = (body as ICmdGetBaseAddress);
+                        if (doc) {
+                            doc.getBaseAddress().then((v) => {
+                                this.postResponse(body, v.toString());
+                            });
+                        } else {
+                            this.postResponse(body, memCmd.def);
+                        }
+                        break;
+                    }
                     case CmdType.GetMemory: {
                         const doc = DualViewDoc.getDocumentById(body.sessionId);
                         if (doc) {
@@ -263,11 +300,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                         break;
                     }
                     case CmdType.GetDocuments: {
-                        const docs = [];
-                        for (const [_key, value] of Object.entries(DualViewDoc.allDocuments)) {
-                            const doc = value.getSerializable();
-                            docs.push(doc);
-                        }
+                        const docs = DualViewDoc.storeSerializableAll();
                         this.postResponse(body, docs);
                         break;
                     }
@@ -279,8 +312,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                         }
                         break;
                     }
+                    case CmdType.SaveClientState: {
+                        const doc = DualViewDoc.getDocumentById(body.sessionId);
+                        if (doc) {
+                            doc.setClientStateAll((body as ICmdClientState).state);
+                        }
+                        break;
+                    }
                     default: {
-                        console.log('handleMessage: Unknown command', body);
+                        console.error('handleMessage: Unknown command', body);
+                        break;
                     }
                 }
                 break;
@@ -312,13 +353,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
     }
 
     private debuggerStatusChanged(arg: ITrackedDebugSessionXfer) {
+        DualViewDoc.debuggerStatusChanged(arg.sessionId, arg.status, arg.sessionName, arg.wsFolder);
         if (this.webviewView?.visible) {
-            DualViewDoc.debuggerStatusChanged(arg.sessionId, arg.status, arg.sessionName, arg.wsFolder);
             const msg: ICmdBase = {
                 type: CmdType.DebugerStatus,
                 sessionId: arg.sessionId
             };
             this.postNotice(msg, arg);
+            if (arg.status === 'terminated') {
+                MemViewPanelProvider.saveState();
+            }
         }
     }
 
@@ -336,6 +380,15 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private showPanel(refresh = true) {
+        if (!this.webviewView || !this.webviewView.visible) {
+            // Following will automatically refresh
+            vscode.commands.executeCommand(MemViewPanelProvider.viewType + '.focus');
+        } else if (refresh) {
+            MemViewPanelProvider.Provider.updateHtmlForInit();
+        }
+    }
+
     static addMemnoryView(session: vscode.DebugSession, expr: string) {
         expr = expr.trim();
         MemViewPanelProvider.getExprResult(session, expr).then((addr) => {
@@ -347,10 +400,12 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
                 isReadOnly: !sessonInfo.canWriteMemory,
+                clientState: {},
+                baseAddressStale: false,
                 isCurrentDoc: true,
             };
             new DualViewDoc(props);
-            MemViewPanelProvider.Provider.updateHtmlForInit();
+            MemViewPanelProvider.Provider.showPanel();
         });
     }
 
@@ -407,6 +462,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
             wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,
+            clientState: {},
+            baseAddressStale: false,
             isCurrentDoc: true,
         };
         const buf = readFileSync(path);
@@ -418,6 +475,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
 
 class mockDebugger implements IMemoryInterfaceCommands {
     constructor(private testBuffer: Uint8Array, private startAddress: bigint) {
+    }
+    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+        return Promise.resolve(arg.def);
     }
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
         const start = Number(BigInt(arg.addr) - this.startAddress);
@@ -433,6 +493,13 @@ class mockDebugger implements IMemoryInterfaceCommands {
 }
 
 class DebuggerIF implements IMemoryInterfaceCommands {
+    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+        const session = DebuggerTracker.getSessionById(arg.sessionId);
+        if (!session || (session.status !== 'stopped')) {
+            return Promise.resolve(arg.def);
+        }
+        return MemViewPanelProvider.getExprResult(session.session, arg.expr);
+    }
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
         const memArg: DebugProtocol.ReadMemoryArguments = {
             memoryReference: arg.addr,

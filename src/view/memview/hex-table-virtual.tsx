@@ -2,24 +2,31 @@
 import React from 'react';
 import { AutoSizer, IndexRange, InfiniteLoader, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
-import { IHexDataRow, IHexHeaderRow, IHexTable, HexDataRow, HexHeaderRow } from './hex-elements';
-import { DualViewDoc } from './dual-view-doc';
+import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-elements';
+import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 
 interface IHexTableState {
-    header: IHexHeaderRow;
     items: IHexDataRow[];
     rowHeight: number;
     scrollTop: number;
+    sessionId: string;
+    sessionStatus: string;
+    baseAddress: bigint;
 }
 
-function getVscodeScrollTop(): number {
-    const v = vscodeGetState<number>('scrollTop');
-    return v || 0;
+function getDocStateScrollTop(): number {
+    let v = 0;
+    if (DualViewDoc.currentDoc) {
+        v = DualViewDoc.currentDoc.getClientState<number>('scrollTop', 0);
+    }
+    return v;
 }
 
-function setVscodeScrollTop(v: number) {
-    vscodeSetState<number>('scrollTop', v);
+async function setDocStateScrollTop(v: number) {
+    if (DualViewDoc.currentDoc) {
+        await DualViewDoc.currentDoc.setClientState<number>('scrollTop', v);
+    }
 }
 
 function getVscodeRowHeight(): number {
@@ -32,28 +39,45 @@ function setVscodeRowHeight(v: number) {
 }
 
 const estimatedRowHeight = getVscodeRowHeight();
-const maxNumRows = (1024 * 1024) / 16;
-export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> {
-    private startAddr = 0n;
-    private endAddr = 0n;
-    private eof = false;
+const maxNumBytes = 1024 * 1024;
+const maxNumRows = maxNumBytes / 16;
+
+export interface IHexTableVirtual {
+    onChange?: OnCellChangeFunc;
+}
+
+export class HexTableVirtual extends React.Component<IHexTableVirtual, IHexTableState> {
     private loadMoreFunc = this.loadMore.bind(this);
     private renderRowFunc = this.renderRow.bind(this);
     private onScrollFunc = this.onScroll.bind(this);
     private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
 
-    constructor(public props: IHexTable) {
+    constructor(public props: IHexTableVirtual) {
         super(props);
 
-        this.startAddr = (this.props.address / 16n) * 16n;
-        this.endAddr = ((this.props.address + BigInt(this.props.numBytes + 15)) / 16n) * 16n;
         this.state = {
-            header: { address: this.props.address },
             items: [],
             rowHeight: estimatedRowHeight,
-            scrollTop: getVscodeScrollTop()
+            sessionId: DualViewDoc.currentDoc?.sessionId || 'unknown',
+            sessionStatus: DualViewDoc.currentDoc?.sessionStatus || 'unknown',
+            baseAddress: DualViewDoc.currentDoc?.baseAddress ?? 0n,
+            scrollTop: getDocStateScrollTop()
         };
-        console.log('In HexTableVirtual.ctor()');
+        DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
+    }
+
+    private onGlobalEventFunc = this.onGlobalEvent.bind(this);
+    private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+        if (arg.sessionId !== this.state.sessionId) {
+            this.setState({ sessionId: arg.sessionId || 'undefined' });
+        }
+        if (arg.sessionStatus !== this.state.sessionStatus) {
+            this.setState({ sessionStatus: arg.sessionStatus || 'undefined' });
+        }
+        if (arg.baseAddress !== this.state.baseAddress) {
+            this.setState({ baseAddress: arg.baseAddress ?? 0n, items: [] });
+            // this.loadInitial();  We need the items to be empty before calling this, not yet sure how to do that
+        }
     }
 
     private rowHeightDetected = false;
@@ -79,10 +103,14 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
             }, 250);
         }
         try {
-            const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
-            const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
-            await this.loadMore({ startIndex: top, stopIndex: top + want });
+            await this.loadInitial();
         } catch (e) {}
+    }
+
+    private async loadInitial() {
+        const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
+        const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
+        await this.loadMore({ startIndex: top, stopIndex: top + want });
     }
 
     private scrollSettingTimeout: NodeJS.Timeout | undefined;
@@ -93,9 +121,9 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         if (this.scrollSettingTimeout) {
             clearTimeout(this.scrollSettingTimeout);
         }
-        this.scrollSettingTimeout = setTimeout(() => {
-            setVscodeScrollTop(this.state.scrollTop);
+        this.scrollSettingTimeout = setTimeout(async () => {
             this.scrollSettingTimeout = undefined;
+            await setDocStateScrollTop(this.state.scrollTop);
         }, 250);
     }
 
@@ -108,7 +136,7 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
             }
             Promise.all(promises)
                 .catch((e) => {
-                    console.log('loadMore() failure not expected', e);
+                    console.error('loadMore() failure not expected', e);
                 })
                 .finally(() => {
                     resolve(true);
@@ -121,14 +149,14 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         const items = this.state.items ? [...this.state.items] : [];
         const newItems = [];
         let changed = false;
+        const endAddr = this.state.baseAddress + BigInt(maxNumBytes);
         for (let ix = items.length; ix <= params.stopIndex; ix++) {
-            const addr = this.props.address + BigInt(ix * 16);
-            if (addr >= this.endAddr) {
+            const addr = this.state.baseAddress + BigInt(ix * 16);
+            if (addr >= endAddr) {
                 break;
             }
             const tmp: IHexDataRow = {
                 address: addr,
-                dirty: this.props.dirty,
                 onChange: this.props.onChange
             };
             items.push(tmp);
@@ -143,7 +171,6 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
         if (changed) {
             this.setState({ items: items });
         }
-        this.eof = items[items.length - 1].address >= this.endAddr || items.length >= maxNumRows;
         return newItems;
     }
 
@@ -167,14 +194,15 @@ export class HexTableVirtual extends React.Component<IHexTable, IHexTableState> 
     }
 
     render() {
+        console.log('In HexTableView.render()');
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
         const heightCalc = window.innerHeight - this.state.rowHeight - 2;
         return (
             <div className='container' style={{ overflowX: 'scroll' }}>
-                <HexHeaderRow address={this.props.address}></HexHeaderRow>
+                <HexHeaderRow address={this.state.baseAddress}></HexHeaderRow>
                 <InfiniteLoader
-                    isRowLoaded={({ index }) => !!this.state.items[index]}
+                    isRowLoaded={({ index }) => !!this.state.items[index]} // TODO: looks dangerous
                     loadMoreRows={this.loadMoreFunc}
                     rowCount={maxNumRows}
                 >

@@ -1,7 +1,5 @@
 import * as React from 'react';
-import { myGlobals } from './webview-globals';
-import { DualViewDoc } from './dual-view-doc';
-// import { vsCodeDropdown } from '@vscode/webview-ui-toolkit';
+import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import {
     VSCodeButton,
     VSCodeDivider,
@@ -16,6 +14,8 @@ export interface IMemViewPanelProps {
 interface IMemViewPanelState {
     currentTab: string;
     width: number;
+    sessionId: string;
+    sessionStatus: string;
 }
 
 export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemViewPanelState> {
@@ -23,9 +23,21 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         super(props);
         this.state = {
             currentTab: DualViewDoc.currentDoc ? DualViewDoc.currentDoc.sessionId : '',
-            width: window.innerWidth
+            width: window.innerWidth,
+            sessionId: 'unknown',
+            sessionStatus: 'unknown'
         };
         window.addEventListener('resize', this.onResize.bind(this));
+        DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEvent.bind(this));
+    }
+
+    private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+        if (arg.sessionId) {
+            this.setState({ sessionId: arg.sessionId });
+        }
+        if (arg.sessionStatus) {
+            this.setState({ sessionStatus: arg.sessionStatus });
+        }
     }
 
     onResize() {
@@ -38,12 +50,14 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         console.log('In MemViewToolbar.render');
         const docItems = [];
         let count = 0;
+        let status = 'No status';
         for (const doc of DualViewDoc.getDocumentsList()) {
             docItems.push(
                 <VSCodeOption key={count} selected={doc.isCurrent} value={doc.sessionId}>
                     {doc.displayName}
                 </VSCodeOption>
             );
+            status = doc.isCurrent ? doc.sessionStatus : status;
             count++;
         }
         docItems.push(
@@ -70,6 +84,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 <VSCodeButton key={key++} appearance='icon'>
                     <span className='codicon codicon-gear'></span>
                 </VSCodeButton>
+                <span style={{ textAlign: 'center' }}>{status}</span>
                 <VSCodeButton key={key++} appearance='icon' style={{ float: 'right' }}>
                     <span className='codicon codicon-close'></span>
                 </VSCodeButton>

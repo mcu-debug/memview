@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import events from 'events';
-import { DebugSessionSatus, ITrackedDebugSessionXfer } from './shared';
+import { DebugSessionStatus, ITrackedDebugSessionXfer } from './shared';
 
 export const TrackedDebuggers = [
     'cortex-debug',
@@ -16,7 +16,7 @@ export interface ITrackedDebugSession {
     session: vscode.DebugSession;
     canWriteMemory: boolean | undefined;
     canReadMemory: boolean | undefined;
-    status: DebugSessionSatus;
+    status: DebugSessionStatus;
 }
 
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
@@ -163,8 +163,8 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         return ret;
     }
 
-    private static setStatus(s: vscode.DebugSession, status: DebugSessionSatus, frameId?: number) {
-        console.log(`Debug Tracker: Session '${s.name}': Status ${status}`);
+    private static setStatus(s: vscode.DebugSession, status: DebugSessionStatus, frameId?: number) {
+        console.log(`Debug Tracker: Session '${s.name}': Status ${status}, id = ${s.id}`);
         const props = DebuggerTracker.allSessionsById[s.id];
         if (props && (props.status !== status)) {
             props.status = status;

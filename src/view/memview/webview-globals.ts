@@ -103,13 +103,8 @@ function recieveResponseFromVSCode(response: IMessage) {
             // Some commands don't need any translation. Only deal with
             // those that need it
             case CmdType.GetDocuments: {
-                DualViewDoc.initializeAllDocuments(response.body);
+                DualViewDoc.restoreSerializableAll(response.body, true);
                 pending.resolve(true);
-                break;
-            }
-            case CmdType.GetMemory: {
-                const tmp = new Uint8Array(response.body.data);
-                pending.resolve(tmp);
                 break;
             }
             case CmdType.GetDebuggerSessions: {

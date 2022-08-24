@@ -13,3 +13,8 @@ export class Timekeeper {
         return ret;
     }
 }
+
+export function hexFmt64(v: bigint) {
+    const str = '0x' + v.toString(16).padStart(16, '0');
+    return str;
+}

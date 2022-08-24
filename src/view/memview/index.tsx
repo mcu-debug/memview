@@ -9,6 +9,7 @@ import { MemViewToolbar } from './top-panel';
 import { DualViewDoc } from './dual-view-doc';
 import {
     ICmdGetMemory,
+    ICmdGetBaseAddress,
     IMemoryInterfaceCommands,
     CmdType,
     ICmdBase,
@@ -16,6 +17,10 @@ import {
 } from './shared';
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
+    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+        return vscodePostCommand(arg);
+    }
+
     getMemory(arg: ICmdGetMemory): Promise<Buffer> {
         return vscodePostCommand(arg);
     }
@@ -25,6 +30,7 @@ class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
 }
 
 const timer = new Utils.Timekeeper();
+console.log('initializing webview');
 
 function doStartup() {
     globalsInit();
@@ -55,7 +61,7 @@ function startRender() {
     ReactDOM.render(
         <RecoilRoot>
             <MemViewToolbar junk='abcd'></MemViewToolbar>
-            <HexTableVirtual address={startAddr} numBytes={numBytes} dirty={false} />
+            <HexTableVirtual address={startAddr} numBytes={numBytes} />
         </RecoilRoot>,
         document.getElementById('root')
     );

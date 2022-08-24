@@ -1,11 +1,12 @@
 
 import * as vscode from 'vscode';
-import * as path from 'path';
+// import * as path from 'path';
 import { DebuggerTracker, DebugTrackerFactory } from './view/memview/debug-tracker';
 import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/memview/memview-doc';
 
 
 class MemView {
+    static Extension: MemView;
     private toggleMemoryView() {
         const config = vscode.workspace.getConfiguration('memview', null);
         const isEnabled = !config.get('showMemoryPanel', false);
@@ -51,12 +52,17 @@ class MemView {
         });
     }
 
+    onDeactivate() {
+        MemViewPanelProvider.saveState();
+    }
+
     constructor(public context: vscode.ExtensionContext) {
-        const p = path.join(context.extensionPath, 'package.json');
+        MemView.Extension = this;
         try {
             DebugTrackerFactory.register(context);
             // MemviewDocumentProvider.register(context);
             MemViewPanelProvider.register(context);
+            // const p = path.join(context.extensionPath, 'package.json');
             // MemViewPanelProvider.doTest(p);
         }
         catch (e) {
@@ -82,5 +88,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() {
+    MemView.Extension.onDeactivate();
     console.log('Deactivating memview');
 }
