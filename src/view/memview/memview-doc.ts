@@ -213,7 +213,12 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
         MemViewPanelProvider.context = context;
         MemViewPanelProvider.Provider = new MemViewPanelProvider(context);
         context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider(MemViewPanelProvider.viewType, MemViewPanelProvider.Provider),
+            vscode.window.registerWebviewViewProvider(
+                MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
+                webviewOptions: {
+                    retainContextWhenHidden: true
+                }
+            }),
         );
         DualViewDoc.init(new DebuggerIF());
         const ver = context.workspaceState.get('version');
@@ -275,7 +280,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
                         this.sendAllDebuggerSessions(body);
                         break;
                     }
-                    case CmdType.GetBaseAddress: {
+                    case CmdType.GetStartAddress: {
                         const doc = DualViewDoc.getDocumentById(body.sessionId);
                         const memCmd = (body as ICmdGetBaseAddress);
                         if (doc) {
@@ -474,13 +479,13 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider {
 }
 
 class mockDebugger implements IMemoryInterfaceCommands {
-    constructor(private testBuffer: Uint8Array, private startAddress: bigint) {
+    constructor(private testBuffer: Uint8Array, private baseAddress: bigint) {
     }
-    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+    getStartAddress(arg: ICmdGetBaseAddress): Promise<string> {
         return Promise.resolve(arg.def);
     }
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
-        const start = Number(BigInt(arg.addr) - this.startAddress);
+        const start = Number(BigInt(arg.addr) - this.baseAddress);
         const end = start + arg.count;
         const bytes = this.testBuffer.slice(
             start > this.testBuffer.length ? this.testBuffer.length : start,
@@ -493,7 +498,7 @@ class mockDebugger implements IMemoryInterfaceCommands {
 }
 
 class DebuggerIF implements IMemoryInterfaceCommands {
-    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+    getStartAddress(arg: ICmdGetBaseAddress): Promise<string> {
         const session = DebuggerTracker.getSessionById(arg.sessionId);
         if (!session || (session.status !== 'stopped')) {
             return Promise.resolve(arg.def);

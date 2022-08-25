@@ -200,7 +200,7 @@ export class HexTableVirtual extends React.Component<IHexTableVirtual, IHexTable
         const heightCalc = window.innerHeight - this.state.rowHeight - 2;
         return (
             <div className='container' style={{ overflowX: 'scroll' }}>
-                <HexHeaderRow address={this.state.baseAddress}></HexHeaderRow>
+                <HexHeaderRow></HexHeaderRow>
                 <InfiniteLoader
                     isRowLoaded={({ index }) => !!this.state.items[index]} // TODO: looks dangerous
                     loadMoreRows={this.loadMoreFunc}

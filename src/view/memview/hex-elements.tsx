@@ -12,6 +12,7 @@ import /*
 'recoil';
 import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { IMemValue } from './shared';
+import { hexFmt64 } from './utils';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IHexCell {
@@ -244,17 +245,14 @@ export const HexCellValueHeader: React.FunctionComponent<{
 };
 
 export interface IHexHeaderRow {
-    address: bigint;
     style?: any;
 }
 
-export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
+export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
     const classNames = 'hex-header-row';
     const ary = [];
-    // let lowByte = Number(props.address % 16n);
-    let lowByte = Number(BigInt.asUintN(8, props.address));
-    for (let x = 0; x < 16; x++, lowByte++) {
-        ary.push(lowByte & 0xff);
+    for (let x = 0; x < 16; x++) {
+        ary.push(x);
     }
     const decodedText = 'Decoded Bytes'.padEnd(16, ' ').split('');
     return (
@@ -329,13 +327,13 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
 
     componentWillUnmount() {
         DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
-        console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
+        // console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
         this.mountStatus = false;
     }
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
-        console.log(`In HexDataRow.onGlobalEvent() ${this.props.address}`);
+        // console.log(`In HexDataRow.onGlobalEvent() ${hexFmt64(this.props.address)}`);
         let modified = false;
         if (arg.sessionId !== this.sessionId) {
             this.sessionId = arg.sessionId || this.sessionId;

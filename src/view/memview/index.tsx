@@ -17,7 +17,7 @@ import {
 } from './shared';
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
-    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string> {
+    getStartAddress(arg: ICmdGetBaseAddress): Promise<string> {
         return vscodePostCommand(arg);
     }
 
@@ -56,12 +56,10 @@ function doStartup() {
 }
 
 function startRender() {
-    const startAddr = DualViewDoc.currentDoc?.startAddress ?? 0n;
-    const numBytes = Number((DualViewDoc.currentDoc?.maxAddress ?? 0n) - startAddr);
     ReactDOM.render(
         <RecoilRoot>
             <MemViewToolbar junk='abcd'></MemViewToolbar>
-            <HexTableVirtual address={startAddr} numBytes={numBytes} />
+            <HexTableVirtual />
         </RecoilRoot>,
         document.getElementById('root')
     );

@@ -9,7 +9,7 @@ export enum CmdType {
     GetDebuggerSessions = 'DebuggerSessions',
     NewDocument = 'NewDocument',
     SaveClientState = 'SaveClientState',
-    GetBaseAddress = 'GetBaseAddress'
+    GetStartAddress = 'GetBaseAddress'
 }
 
 export interface IMessage {
@@ -100,7 +100,7 @@ export interface ICmdClientState extends ICmdBase {
 }
 
 export interface IMemoryInterfaceCommands {
-    getBaseAddress(arg: ICmdGetBaseAddress): Promise<string>;
+    getStartAddress(arg: ICmdGetBaseAddress): Promise<string>;
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
 }
