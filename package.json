@@ -4,12 +4,24 @@
     "description": "Provide memory views for debuggers",
     "version": "0.0.1",
     "publisher": "haneefdm",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/haneefdm/memview"
+    },
+    "bugs": {
+        "url": "https://github.com/haneefdm/memview/issues"
+    },
     "engines": {
         "vscode": "^1.69.0"
     },
     "categories": [
         "Other"
     ],
+    "icon": "icon.png",
+    "galleryBanner": {
+        "color": "#6f7ab3",
+        "theme": "dark"
+    },
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
@@ -90,6 +102,7 @@
         }
     },
     "scripts": {
+        "vscode:prepublish": "patch-package && npm run compile",
         "postinstall": "patch-package",
         "compile": "tsc -noEmit && node .esbuild.config.js --analyze",
         "lint": "eslint src --ext ts",
@@ -121,6 +134,7 @@
         "vscode-webview-tools": "^0.1.1"
     },
     "dependencies": {
+        "@popperjs/core": "^2.11.6",
         "@vscode/codicons": "^0.0.32",
         "@vscode/debugprotocol": "^1.56.1",
         "@vscode/extension-telemetry": "0.5.2",
@@ -131,7 +145,7 @@
         "patch-package": "^6.4.7",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
-        "react-popper": "^2.2.5",
+        "react-popper": "^2.3.0",
         "react-virtualized": "^9.22.3",
         "react-virtualized-auto-sizer": "^1.0.6",
         "react-window": "^1.8.7",

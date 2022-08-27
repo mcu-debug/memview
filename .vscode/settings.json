@@ -36,5 +36,5 @@
     "prettier.tabWidth": 4,
     "editor.wordWrapColumn": 120,
     "cortex-debug.showRTOS": false,
-    "svg.preview.background": "editor"
+    "svg.preview.background": "transparent"
 }
