@@ -1,5 +1,6 @@
 import { IMemPages } from './dual-view-doc';
 
+export const UnknownDocId = 'Unknown';
 
 export enum CmdType {
     GetDocuments = 'GetDocuments',
@@ -9,7 +10,8 @@ export enum CmdType {
     GetDebuggerSessions = 'DebuggerSessions',
     NewDocument = 'NewDocument',
     SaveClientState = 'SaveClientState',
-    GetStartAddress = 'GetBaseAddress'
+    GetStartAddress = 'GetBaseAddress',
+    ButtonClick = 'ButtonClick'
 }
 
 export interface IMessage {
@@ -23,6 +25,7 @@ export interface ICmdBase {
     type: CmdType;
     seq?: number; // Must be filled in before sending
     sessionId: string; // Leave empty where session does not matter
+    docId: string;
 }
 
 export interface ICmdGetDocuments extends ICmdBase {
@@ -50,7 +53,7 @@ export interface ICmdGetMemory extends ICmdBase {
     count: number;
 }
 
-export interface ICmdGetBaseAddress extends ICmdBase {
+export interface ICmdGetStartAddress extends ICmdBase {
     expr: string;
     def: string;
 }
@@ -65,6 +68,7 @@ export interface ICmdSetByte extends ICmdBase {
 }
 
 export interface IMemValue {
+    changed?: boolean;      // Changed on reload (different from edited)
     cur: number;
     orig: number;
     stale: boolean;
@@ -74,19 +78,20 @@ export interface IMemValue {
 export interface IWebviewDocInfo {
     displayName: string;
     sessionId: string;
+    docId: string;
     sessionStatus: string;
     isModified: boolean;
     isCurrent: boolean;
 }
 export type ModifiedXferMap = { [addr: string]: number };
 export interface IWebviewDocXfer {
+    docId: string;
     sessionId: string; // The debug session ID, also the document Id
     sessionName: string;
     displayName: string;
     wsFolder: string;
     startAddress: string;
     isReadOnly: boolean; // Where to start reading.
-    currentAddress?: string; // When displayed, what address should be visible
     isCurrentDoc?: boolean;
     maxBytes?: number;
     modifiedMap?: ModifiedXferMap;
@@ -99,8 +104,13 @@ export interface ICmdClientState extends ICmdBase {
     state: { [key: string]: any };
 }
 
+export type CmdButtonName = 'close' | 'new' | 'select' | 'refresh' | 'settings';
+export interface ICmdButtonClick extends ICmdBase {
+    button: CmdButtonName;
+}
+
 export interface IMemoryInterfaceCommands {
-    getStartAddress(arg: ICmdGetBaseAddress): Promise<string>;
+    getStartAddress(arg: ICmdGetStartAddress): Promise<string>;
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
 }

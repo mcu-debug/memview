@@ -136,3 +136,10 @@ body {
     border: 0;
     color: #ff0;
 }
+
+.debug-status {
+    text-align: center; /* Vertical alignment */
+    justify-content: left; /* Horizontal alignment */
+    vertical-align: sub;
+    padding-left: 10px;
+}

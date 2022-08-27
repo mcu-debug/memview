@@ -9,7 +9,7 @@ import { MemViewToolbar } from './top-panel';
 import { DualViewDoc } from './dual-view-doc';
 import {
     ICmdGetMemory,
-    ICmdGetBaseAddress,
+    ICmdGetStartAddress,
     IMemoryInterfaceCommands,
     CmdType,
     ICmdBase,
@@ -17,7 +17,7 @@ import {
 } from './shared';
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
-    getStartAddress(arg: ICmdGetBaseAddress): Promise<string> {
+    getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
         return vscodePostCommand(arg);
     }
 
@@ -40,7 +40,8 @@ function doStartup() {
     const msg: ICmdBase = {
         type: CmdType.GetDocuments,
         seq: 0,
-        sessionId: ''
+        sessionId: '',
+        docId: ''
     };
     promises.push(vscodePostCommand(msg));
     msg.type = CmdType.GetDebuggerSessions;

@@ -21,6 +21,7 @@
         "Memview",
         "overscan",
         "svgr",
+        "uuidv",
         "webviews",
         "Xfer"
     ],
@@ -34,5 +35,6 @@
     "prettier.singleQuote": true,
     "prettier.tabWidth": 4,
     "editor.wordWrapColumn": 120,
-    "cortex-debug.showRTOS": false
+    "cortex-debug.showRTOS": false,
+    "svg.preview.background": "editor"
 }

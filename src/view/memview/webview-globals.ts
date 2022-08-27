@@ -103,7 +103,7 @@ function recieveResponseFromVSCode(response: IMessage) {
             // Some commands don't need any translation. Only deal with
             // those that need it
             case CmdType.GetDocuments: {
-                DualViewDoc.restoreSerializableAll(response.body, true);
+                DualViewDoc.restoreSerializableAll(response.body);
                 pending.resolve(true);
                 break;
             }

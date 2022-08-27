@@ -15,7 +15,9 @@
         "onDebugResolve:cppdbg",
         "onCommand:memview.hello",
         "onCommand:memview.toggleMemoryView",
-        "onCommand:memview.addMemoryView"
+        "onCommand:memview.addMemoryView",
+        "onWebviewPanel:memview.memView",
+        "onUri"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -134,6 +136,7 @@
         "react-virtualized-auto-sizer": "^1.0.6",
         "react-window": "^1.8.7",
         "react-window-infinite-loader": "^1.0.8",
-        "recoil": "^0.5.2"
+        "recoil": "^0.5.2",
+        "uuidv4": "^6.2.13"
     }
 }

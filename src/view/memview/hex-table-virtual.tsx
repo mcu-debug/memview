@@ -5,11 +5,13 @@ import 'react-virtualized/styles.css';
 import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-elements';
 import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
+import { UnknownDocId } from './shared';
 
 interface IHexTableState {
     items: IHexDataRow[];
     rowHeight: number;
     scrollTop: number;
+    docId: string;
     sessionId: string;
     sessionStatus: string;
     baseAddress: bigint;
@@ -58,8 +60,9 @@ export class HexTableVirtual extends React.Component<IHexTableVirtual, IHexTable
         this.state = {
             items: [],
             rowHeight: estimatedRowHeight,
-            sessionId: DualViewDoc.currentDoc?.sessionId || 'unknown',
-            sessionStatus: DualViewDoc.currentDoc?.sessionStatus || 'unknown',
+            docId: DualViewDoc.currentDoc?.docId || UnknownDocId,
+            sessionId: DualViewDoc.currentDoc?.sessionId || UnknownDocId,
+            sessionStatus: DualViewDoc.currentDoc?.sessionStatus || UnknownDocId,
             baseAddress: DualViewDoc.currentDoc?.baseAddress ?? 0n,
             scrollTop: getDocStateScrollTop()
         };
@@ -68,6 +71,9 @@ export class HexTableVirtual extends React.Component<IHexTableVirtual, IHexTable
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+        if (arg.docId !== this.state.docId) {
+            this.setState({ docId: arg.docId || 'undefined' });
+        }
         if (arg.sessionId !== this.state.sessionId) {
             this.setState({ sessionId: arg.sessionId || 'undefined' });
         }

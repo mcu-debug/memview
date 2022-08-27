@@ -11,8 +11,8 @@ import /*
     */
 'recoil';
 import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg } from './dual-view-doc';
-import { IMemValue } from './shared';
-import { hexFmt64 } from './utils';
+import { IMemValue, UnknownDocId } from './shared';
+import { hexFmt64 as _hexFmt64 } from './utils';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IHexCell {
@@ -40,10 +40,12 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     }
 
     classNames = () => {
+        const byteInfo = this.props.byteInfo;
+        const changed = byteInfo.orig !== byteInfo.cur || byteInfo.changed;
         return (
             'hex-cell hex-cell-value' +
             (this.state.frozen ? ' hex-cell-value-dirty' : '') +
-            (this.props.byteInfo.orig !== this.props.byteInfo.cur ? ' hex-cell-value-changed' : '')
+            (changed ? ' hex-cell-value-changed' : '')
         );
     };
 
@@ -211,7 +213,9 @@ export const HexCellChar: React.FunctionComponent<{
     const val = byteInfo.cur;
     const origVal = byteInfo.orig;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
-    const classNames = 'hex-cell hex-cell-char' + (val !== origVal ? ' hex-cell-char-changed' : '');
+    const classNames =
+        'hex-cell hex-cell-char' +
+        (val !== origVal || byteInfo.changed ? ' hex-cell-char-changed' : '');
     return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -286,8 +290,9 @@ interface IHexDataRowState {
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
-    private sessionId = 'unknown';
-    private sessionStatus = 'unknown';
+    private docId = UnknownDocId;
+    private sessionId = UnknownDocId;
+    private sessionStatus = UnknownDocId;
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
     constructor(public props: IHexDataRow) {
@@ -333,10 +338,14 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
-        // console.log(`In HexDataRow.onGlobalEvent() ${hexFmt64(this.props.address)}`);
+        // console.log(`In HexDataRow.onGlobalEvent() ${_hexFmt64(this.props.address)}`);
         let modified = false;
         if (arg.sessionId !== this.sessionId) {
             this.sessionId = arg.sessionId || this.sessionId;
+            modified = true;
+        }
+        if (arg.docId !== this.docId) {
+            this.docId = arg.docId || this.docId;
             modified = true;
         }
         if (arg.sessionStatus !== this.sessionStatus) {
@@ -432,7 +441,7 @@ const charCodesLookup: string[] = [];
 const hexValuesLookup: string[] = [];
 for (let byte = 0; byte <= 255; byte++) {
     const v =
-        byte <= 32
+        byte < 32
             ? odStyleChars[byte]
             : byte === 127
             ? 'del'

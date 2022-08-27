@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
 // import * as path from 'path';
-import { DebuggerTracker, DebugTrackerFactory } from './view/memview/debug-tracker';
+import { DebugTrackerFactory } from './view/memview/debug-tracker';
 import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/memview/memview-doc';
 
 
@@ -28,30 +28,6 @@ class MemView {
         vscode.commands.executeCommand('setContext', 'memview:memoryPanelLocation', panelLocation);
     }
 
-    private addMemoryView() {
-        const session = vscode.debug.activeDebugSession;
-        if (!session) {
-            vscode.window.showErrorMessage('There is no active debug session');
-            return;
-        }
-        const ret = DebuggerTracker.isValidSessionForMemory(session.id);
-        if (ret !== true) {
-            vscode.window.showErrorMessage(`${ret}. Cannot add a memory view`);
-            return;
-        }
-        const options: vscode.InputBoxOptions = {
-            title: 'Create new memory view',
-            prompt: 'Enter a hex/decimal constant of a C-expression',
-            placeHolder: '0x',
-        };
-        vscode.window.showInputBox(options).then((value: string | undefined) => {
-            value = value !== undefined ? value.trim() : '';
-            if (value && vscode.debug.activeDebugSession) {
-                MemViewPanelProvider.addMemnoryView(vscode.debug.activeDebugSession, value);
-            }
-        });
-    }
-
     onDeactivate() {
         MemViewPanelProvider.saveState();
     }
@@ -76,7 +52,7 @@ class MemView {
             vscode.commands.registerCommand('memview.hello', () => {
                 vscode.window.showInformationMessage('Hello from memview extension');
             }),
-            vscode.commands.registerCommand('memview.addMemoryView', this.addMemoryView.bind(this)),
+            vscode.commands.registerCommand('memview.addMemoryView', MemViewPanelProvider.newMemoryView),
             vscode.workspace.onDidChangeConfiguration(this.onSettingsChanged.bind(this))
         );
     }
