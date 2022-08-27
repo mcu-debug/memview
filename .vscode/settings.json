@@ -36,5 +36,6 @@
     "prettier.tabWidth": 4,
     "editor.wordWrapColumn": 120,
     "cortex-debug.showRTOS": false,
+    "javascript.validate.enable": false,
     "svg.preview.background": "transparent"
 }

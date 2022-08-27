@@ -1,9 +1,9 @@
-// Originally from https://codepen.io/abidibo/pen/dwgLJo
 import React from 'react';
-import { AutoSizer, /* IndexRange, InfiniteLoader,*/ List } from 'react-virtualized';
+import AutoSizer from '../../../import/auto-sizer';
 import InfiniteLoader = require('react-window-infinite-loader');
+import { FixedSizeList as List, ListOnScrollProps } from 'react-window';
 
-import 'react-virtualized/styles.css';
+// import 'react-virtualized/styles.css';
 import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-elements';
 import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
@@ -122,9 +122,9 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     }
 
     private scrollSettingTimeout: NodeJS.Timeout | undefined;
-    onScroll(args: { clientHeight: number; scrollHeight: number; scrollTop: number }) {
+    onScroll(args: ListOnScrollProps) {
         // We just remember the last top position to use next time we are mounted
-        this.setState({ scrollTop: args.scrollTop });
+        this.setState({ scrollTop: args.scrollOffset });
 
         if (this.scrollSettingTimeout) {
             clearTimeout(this.scrollSettingTimeout);
@@ -182,27 +182,41 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         return newItems;
     }
 
+    private isItemLoadedFunc = this.isItemLoaded.bind(this);
+    private isItemLoaded(index: number): boolean {
+        return index >= 0 && index < this.state.items.length;
+    }
+
     private showScrollingPlaceholder = false;
     renderRow(args: any) {
         // console.log('renderRow: ', args);
-        const { index, isScrolling, key, style } = args;
+        // const { index, isScrolling, key, style } = args;
+        const { index, isScrolling, _data, style } = args;
         const classNames = 'row isScrollingPlaceholder';
-        if (this.showScrollingPlaceholder && isScrolling) {
+        let dummyContent = '';
+        if (!this.isItemLoaded(index)) {
+            dummyContent = 'Loading...';
+        } else if (this.showScrollingPlaceholder && isScrolling) {
+            dummyContent = 'Scrolling...';
+        }
+
+        if (dummyContent) {
             return (
-                <div className={classNames} key={key} style={style}>
-                    Scrolling...
+                <div className={classNames} style={style}>
+                    {dummyContent}
                 </div>
             );
         }
+
         const item = this.state.items[index];
         item.style = style;
-        const ret = <HexDataRow {...item} key={key}></HexDataRow>;
+        const ret = <HexDataRow {...item}></HexDataRow>;
         // console.log(ret);
         return ret;
     }
 
     render() {
-        console.log('In HexTableView.render()');
+        console.log('In HexTableView2.render()');
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
         const heightCalc = window.innerHeight - this.state.rowHeight - 2;
@@ -210,7 +224,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             <div className='container' style={{ overflowX: 'scroll' }}>
                 <HexHeaderRow></HexHeaderRow>
                 <InfiniteLoader
-                    isItemLoaded={(index) => !!this.state.items[index]} // TODO: looks dangerous
+                    isItemLoaded={this.isItemLoadedFunc}
                     loadMoreItems={this.loadMoreFunc}
                     itemCount={maxNumRows}
                 >
@@ -222,13 +236,14 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                                     onItemsRendered={onItemsRendered}
                                     height={heightCalc}
                                     width={width}
-                                    overscanRowCount={30}
-                                    rowCount={this.state.items.length}
-                                    rowHeight={this.state.rowHeight}
-                                    rowRenderer={this.renderRowFunc}
-                                    scrollTop={this.state.scrollTop}
+                                    overscanCount={30}
+                                    itemCount={this.state.items.length}
+                                    itemSize={this.state.rowHeight}
+                                    initialScrollOffset={this.state.scrollTop}
                                     onScroll={this.onScrollFunc}
-                                />
+                                >
+                                    {this.renderRowFunc}
+                                </List>
                             )}
                         </AutoSizer>
                     )}
