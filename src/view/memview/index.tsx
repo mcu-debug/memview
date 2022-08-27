@@ -4,7 +4,8 @@ import { globalsInit, myGlobals, vscodePostCommand } from './webview-globals';
 import * as Utils from './utils';
 import { RecoilRoot } from 'recoil';
 import './index.css';
-import { HexTableVirtual } from './hex-table-virtual';
+// import { HexTableVirtual } from './hex-table-virtual';
+import { HexTableVirtual2 } from './hex-table-virtual2';
 import { MemViewToolbar } from './top-panel';
 import { DualViewDoc } from './dual-view-doc';
 import {
@@ -60,7 +61,7 @@ function startRender() {
     ReactDOM.render(
         <RecoilRoot>
             <MemViewToolbar junk='abcd'></MemViewToolbar>
-            <HexTableVirtual />
+            <HexTableVirtual2 />
         </RecoilRoot>,
         document.getElementById('root')
     );
