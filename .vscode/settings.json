@@ -20,6 +20,7 @@
         "hanlders",
         "Memview",
         "overscan",
+        "querystring",
         "svgr",
         "uuidv",
         "webviews",
