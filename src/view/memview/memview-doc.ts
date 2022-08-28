@@ -249,7 +249,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         const cvt = (value: string | string[] | undefined): string | undefined => {
             return value === undefined ? undefined : (Array.isArray(value) ? value.join(',') : value);
         };
-        const path = decodeURIComponent(uri.path ?? '');
+        const trimSlashes = (path: string): string => {
+            while (path.startsWith('/')) {
+                path = path.substring(1);
+            }
+            while (path.endsWith('/')) {
+                path = path.substring(0, path.length - 1);
+            }
+            return path;
+        };
+        const path = trimSlashes(decodeURIComponent(uri.path ?? ''));
         const expr = cvt(options.expr);
         if (!expr && !path) {
             return Promise.reject(new Error('MemView URI handler: No expression or path provided'));
