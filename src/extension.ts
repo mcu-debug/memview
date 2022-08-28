@@ -16,7 +16,7 @@ import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/memvi
  */
 export interface MemviewUriOptions {
     /**
-     * `expr` can be a constant memory address or an expression resulting in an adddress by debugger using evaluate().
+     * `expr` can be a constant memory address or an expression resulting in an address by debugger using evaluate().
      * URI path is used if no expr is specified
      */
     expr?: string;
