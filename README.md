@@ -85,7 +85,7 @@ export interface MemviewUriOptions {
     displayName?: string;
 
     /**
-     * Following to can be used for better matching of an inactive memory view with a later active
+     * Following two can be used for better matching of an inactive memory view with a later active
      * debug session. Unfortunately, that only works when the debugger starts a new session
      */
 
