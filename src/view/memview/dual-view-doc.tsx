@@ -74,11 +74,12 @@ export class DualViewDoc {
     public startAddress = 0n;
     public maxAddress = 0n;
     public displayName: string;
+    public expr: string;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
-    public readonly sessionName: string;
-    public readonly wsFolder: string;
+    public sessionName: string;
+    public wsFolder: string;
     public readonly inWebview: boolean;
     private clientState: { [key: string]: any };
     public sessionStatus: DocDebuggerStatus = DocDebuggerStatus.Default;
@@ -92,6 +93,7 @@ export class DualViewDoc {
         this.docId = info.docId;
         this.setAddresses(BigInt(info.startAddress));
         this.displayName = info.displayName;
+        this.expr = info.expr;
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
@@ -149,7 +151,7 @@ export class DualViewDoc {
             return Promise.resolve(this.baseAddress);
         }
         const arg: ICmdGetStartAddress = {
-            expr: this.displayName,
+            expr: this.expr,
             def: this.baseAddress.toString(),
             type: CmdType.GetStartAddress,
             sessionId: this.sessionId,
@@ -199,14 +201,16 @@ export class DualViewDoc {
             if (doc.sessionId !== sessionId) {
                 if (
                     status === 'started' &&
-                    sessionName === doc.sessionName &&
-                    doc.wsFolder === wsFolder
+                    (sessionName === doc.sessionName || !doc.sessionName) &&
+                    (doc.wsFolder === wsFolder || !doc.wsFolder)
                 ) {
                     // We found an orphaned document and a new debug session started that can now own it
                     console.log(
                         `New debug session ${sessionId} replaces ${doc.sessionId} inWebview = ${doc.inWebview}`
                     );
                     doc.sessionId = sessionId;
+                    doc.sessionName = sessionName;
+                    doc.wsFolder = wsFolder;
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                     doc.memory.deleteHistory();
                 }
@@ -457,6 +461,7 @@ export class DualViewDoc {
             sessionId: this.sessionId,
             sessionName: this.sessionName,
             displayName: this.displayName,
+            expr: this.expr,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
@@ -482,6 +487,8 @@ export class DualViewDoc {
     }
 
     public static restoreSerializableAll(documents: IWebviewDocXfer[]) {
+        DualViewDoc.currentDoc = undefined;
+        DualViewDoc.allDocuments = {};
         let lastDoc = undefined;
         for (const item of documents) {
             const xferObj = item as IWebviewDocXfer;
@@ -512,6 +519,7 @@ export class DualViewDoc {
             docId: UnknownDocId,
             sessionId: UnknownDocId,
             sessionName: UnknownDocId,
+            expr: UnknownDocId,
             displayName: 'No memory views',
             wsFolder: '.',
             startAddress: '0',

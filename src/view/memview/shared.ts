@@ -86,9 +86,10 @@ export interface IWebviewDocInfo {
 export type ModifiedXferMap = { [addr: string]: number };
 export interface IWebviewDocXfer {
     docId: string;
-    sessionId: string; // The debug session ID, also the document Id
-    sessionName: string;
+    sessionId: string;          // The debug session ID, also the document Id
+    sessionName: string;        // The debug session name
     displayName: string;
+    expr: string;
     wsFolder: string;
     startAddress: string;
     isReadOnly: boolean; // Where to start reading.

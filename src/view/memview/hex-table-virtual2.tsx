@@ -12,6 +12,7 @@ import { UnknownDocId } from './shared';
 interface IHexTableState {
     items: IHexDataRow[];
     rowHeight: number;
+    toolbarHeight: number;
     scrollTop: number;
     docId: string;
     sessionId: string;
@@ -42,7 +43,17 @@ function setVscodeRowHeight(v: number) {
     vscodeSetState<number>('rowHeight', v);
 }
 
+function getVscodeToolbarHeight(): number {
+    const v = vscodeGetState<number>('toolbarHeight');
+    return v || 30;
+}
+
+function setVscodeToolbarHeight(v: number) {
+    vscodeSetState<number>('toolbarHeight', v);
+}
+
 const estimatedRowHeight = getVscodeRowHeight();
+const estimatedToolbarHeight = getVscodeToolbarHeight();
 const maxNumBytes = 1024 * 1024;
 const maxNumRows = maxNumBytes / 16;
 
@@ -61,6 +72,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
 
         this.state = {
             items: [],
+            toolbarHeight: estimatedToolbarHeight,
             rowHeight: estimatedRowHeight,
             docId: DualViewDoc.currentDoc?.docId || UnknownDocId,
             sessionId: DualViewDoc.currentDoc?.sessionId || UnknownDocId,
@@ -89,24 +101,38 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     }
 
     private rowHeightDetected = false;
+    private toolbarHeightDetected = false;
     async componentDidMount() {
-        if (!this.lineHeightDetectTimer && !this.rowHeightDetected) {
+        if (!this.lineHeightDetectTimer) {
+            this.rowHeightDetected = false;
+            this.toolbarHeightDetected = false;
             this.lineHeightDetectTimer = setInterval(() => {
-                const elt = document.querySelector('.hex-cell-value');
-                if (elt) {
-                    const style = getComputedStyle(elt);
-                    const h = style.lineHeight;
-                    if (h && h.endsWith('px')) {
-                        const tmp = parseFloat(h);
-                        if (tmp !== this.state.rowHeight) {
-                            this.setState({ rowHeight: tmp });
-                            setVscodeRowHeight(tmp);
+                for (const clsName of ['.hex-cell-value', '.toolbar']) {
+                    const elt = document.querySelector(clsName);
+                    if (elt) {
+                        const tmp = (elt as any).offsetHeight;
+                        const isCell = clsName === '.hex-cell-value';
+                        if (isCell && !this.rowHeightDetected) {
+                            this.rowHeightDetected = true;
+                            if (tmp !== this.state.rowHeight) {
+                                // eslint-disable-next-line no-debugger
+                                debugger;
+                                this.setState({ rowHeight: tmp });
+                                setVscodeRowHeight(tmp);
+                            }
+                        } else if (!isCell && !this.toolbarHeightDetected) {
+                            this.toolbarHeightDetected = true;
+                            if (tmp !== this.state.toolbarHeight) {
+                                this.setState({ toolbarHeight: tmp });
+                                setVscodeToolbarHeight(tmp);
+                            }
                         }
+                        // TODO: This should be set back to false when theme/fonts change
                     }
+                }
+                if (this.rowHeightDetected && this.toolbarHeightDetected) {
                     clearInterval(this.lineHeightDetectTimer);
                     this.lineHeightDetectTimer = undefined;
-                    // TODO: This should be set back to false when theme/fonts change
-                    this.rowHeightDetected = true;
                 }
             }, 250);
         }
@@ -216,10 +242,12 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     }
 
     render() {
-        console.log('In HexTableView2.render()');
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
-        const heightCalc = window.innerHeight - this.state.rowHeight - 2;
+        const heightCalc = window.innerHeight - this.state.rowHeight - this.state.toolbarHeight - 2;
+        console.log(
+            `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight}`
+        );
         return (
             <div className='container' style={{ overflowX: 'scroll' }}>
                 <HexHeaderRow></HexHeaderRow>

@@ -1,8 +1,9 @@
 {
     "name": "memview",
     "displayName": "MemoryView",
+    "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "haneefdm",
     "repository": {
         "type": "git",
@@ -25,6 +26,7 @@
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
+        "onDebugResolve:cspy",
         "onCommand:memview.hello",
         "onCommand:memview.toggleMemoryView",
         "onCommand:memview.addMemoryView",
@@ -102,8 +104,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "patch-package && npm run compile",
-        "postinstall": "patch-package",
+        "vscode:prepublish": "npm run compile",
         "compile": "tsc -noEmit && node .esbuild.config.js --analyze",
         "lint": "eslint src --ext ts",
         "watch": "node .esbuild.config.js --watch --analyze",
@@ -142,12 +143,9 @@
         "buffer": "^6.0.3",
         "clsx": "^1.2.1",
         "events": "^3.3.0",
-        "patch-package": "^6.4.7",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
         "react-popper": "^2.3.0",
-        "react-virtualized": "^9.22.3",
-        "react-virtualized-auto-sizer": "^1.0.6",
         "react-window": "^1.8.7",
         "react-window-infinite-loader": "^1.0.8",
         "recoil": "^0.5.2",

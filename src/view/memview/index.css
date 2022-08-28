@@ -1,6 +1,18 @@
 #root {
     overflow-x: scroll;
+    overflow-y: visible;
+    flex: 1;
 }
+
+html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    min-height: 100%;
+}
+
 .hex-cell {
     border: 1px;
     border-color: coral;
@@ -107,19 +119,6 @@
 }
 
 /*****************************************************/
-
-html {
-    height: 100%;
-}
-
-body {
-    display: flex;
-    min-height: 100%;
-}
-
-#root {
-    flex: 1;
-}
 
 .container {
     display: flex;

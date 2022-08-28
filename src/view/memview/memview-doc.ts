@@ -205,7 +205,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
 export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.UriHandler {
     private static context: vscode.ExtensionContext;
     private static readonly viewType = 'memview.memView';
-    private static readonly stateVersion = 0;
+    private static readonly stateVersion = 1;
     private static readonly stateKeyName = 'documents';
     private static Provider: MemViewPanelProvider;
     private webviewView: vscode.WebviewView | undefined;
@@ -217,19 +217,24 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.registerWebviewViewProvider(
                 MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
                 webviewOptions: {
-                    retainContextWhenHidden: true
+                    // retainContextWhenHidden: true
                 }
             }),
             vscode.window.registerUriHandler(MemViewPanelProvider.Provider)
         );
         DualViewDoc.init(new DebuggerIF());
-        const ver = context.workspaceState.get('version');
-        if (ver === MemViewPanelProvider.stateVersion) {
-            const obj = context.workspaceState.get(MemViewPanelProvider.stateKeyName);
-            const saved = obj as IWebviewDocXfer[];
-            if (saved) {
-                DualViewDoc.restoreSerializableAll(saved);
+        try {
+            const ver = context.workspaceState.get('version');
+            if (ver === MemViewPanelProvider.stateVersion) {
+                const obj = context.workspaceState.get(MemViewPanelProvider.stateKeyName);
+                const saved = obj as IWebviewDocXfer[];
+                if (saved) {
+                    DualViewDoc.restoreSerializableAll(saved);
+                }
             }
+        }
+        catch (e) {
+            DualViewDoc.restoreSerializableAll([]);
         }
     }
 
@@ -239,7 +244,51 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     }
 
     handleUri(uri: vscode.Uri): vscode.ProviderResult<void> {
-        throw new Error('Method not implemented.');
+        console.log(uri);
+        const options = querystring.parse(uri.query);
+        const cvt = (value: string | string[] | undefined): string | undefined => {
+            return value === undefined ? undefined : (Array.isArray(value) ? value.join(',') : value);
+        };
+        const path = decodeURIComponent(uri.path ?? '');
+        const expr = cvt(options.expr);
+        if (!expr && !path) {
+            return Promise.reject(new Error('MemView URI handler: No expression or path provided'));
+        }
+
+        let session = vscode.debug.activeDebugSession;
+        const sessionId = (options.sessionId === 'current' && session) ? session.id : cvt(options.sessionId) || session?.id || uuid();
+        const sessionInfo = DebuggerTracker.getSessionById(sessionId);
+        if (sessionInfo) {
+            session = sessionInfo.session;
+        }
+        // Someone can sneak-ing debugger we don't support, but then it will never work as we will never
+        // attach to such a debugger. But it will get into our document list
+        const props: IWebviewDocXfer = {
+            docId: uuid(),
+            sessionId: sessionId,
+            sessionName: session?.name || cvt(options.sessionName) || '',
+            displayName: cvt(options.displayName) || path || expr || '',
+            expr: expr || path,
+            wsFolder: session?.workspaceFolder?.uri.toString() || cvt(options.wsFolder) || '',
+            startAddress: '',
+            isReadOnly: !sessionInfo?.canWriteMemory,
+            clientState: {},
+            baseAddressStale: true,
+            isCurrentDoc: true,
+        };
+        if (sessionInfo && sessionInfo.status === 'stopped') {
+            MemViewPanelProvider.getExprResult(sessionInfo.session, props.expr).then((addr) => {
+                props.baseAddressStale = false;
+                props.startAddress = addr;
+                new DualViewDoc(props);
+                MemViewPanelProvider.Provider.showPanel();
+            }).catch((e) => {
+                vscode.window.showErrorMessage(`Error: Bad expression in Uri '${expr}'. ${e}`);
+                return Promise.reject(new Error(`MemView URI handler: Expression ${expr} failed to evaluate: ${e}`));
+            });
+        } else {
+            new DualViewDoc(props);
+        }
     }
 
     static saveState() {
@@ -435,6 +484,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 sessionId: session.id,
                 sessionName: session.name,
                 displayName: expr,
+                expr: expr,
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
                 isReadOnly: !sessonInfo.canWriteMemory,
@@ -517,6 +567,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             sessionId: getNonce(),
             sessionName: 'blah',
             displayName: '0xdeadbeef',
+            expr: '0xdeafbeef',
             wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,
