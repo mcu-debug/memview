@@ -85,19 +85,22 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
-        if (arg.docId !== this.state.docId) {
-            this.setState({ docId: arg.docId || 'undefined' });
+        const newState: IHexTableState = { ...this.state };
+        if (arg.docId && arg.docId !== this.state.docId) {
+            newState.docId = arg.docId;
         }
-        if (arg.sessionId !== this.state.sessionId) {
-            this.setState({ sessionId: arg.sessionId || 'undefined' });
+        if (arg.sessionId && arg.sessionId !== this.state.sessionId) {
+            newState.sessionId = arg.sessionId;
         }
-        if (arg.sessionStatus !== this.state.sessionStatus) {
-            this.setState({ sessionStatus: arg.sessionStatus || 'undefined' });
+        if (arg.sessionStatus && arg.sessionStatus !== this.state.sessionStatus) {
+            newState.sessionStatus = arg.sessionStatus;
         }
-        if (arg.baseAddress !== this.state.baseAddress) {
-            this.setState({ baseAddress: arg.baseAddress ?? 0n, items: [] });
-            // this.loadInitial();  We need the items to be empty before calling this, not yet sure how to do that
+        if (arg.baseAddress && arg.baseAddress !== this.state.baseAddress) {
+            newState.baseAddress = arg.baseAddress ?? 0n;
+            newState.items = [];
+            this.loadInitial(); // We need the items to be empty before calling this, not yet sure how to do that
         }
+        this.setState(newState);
     }
 
     private rowHeightDetected = false;
@@ -115,8 +118,6 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                         if (isCell && !this.rowHeightDetected) {
                             this.rowHeightDetected = true;
                             if (tmp !== this.state.rowHeight) {
-                                // eslint-disable-next-line no-debugger
-                                debugger;
                                 this.setState({ rowHeight: tmp });
                                 setVscodeRowHeight(tmp);
                             }

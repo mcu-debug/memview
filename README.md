@@ -32,7 +32,7 @@ Your views are preserved across restarts of VSCode window. They are saved on a w
 ## Usage (by another extension)
 
 -   We can provide an API and it is planned and we will implement as soon as there is some extension that needs it.
--   Any extension can create a memory view using the VSCode API to open a URI. The first extension to use it will probably be Cortex-Debug and this wiill be refined as needed
+-   Any extension can create a memory view using the VSCode API to open a URI. The first extension to use it will probably be Cortex-Debug and this will be refined as needed
 
 ```typescript
 const options: MemviewUriOptions = {
@@ -49,9 +49,10 @@ vscode.env.openExternal(uri).then((success: boolean) => {
     // One problem right now is that it always seems to succeed even when a view did
     // not start successfully. Please let us know of issues and we will figure it out
     console.log(`Operation URI open: success=${success}`);
-}), (e: any) => {
-    console.error(e);
-};
+}),
+    (e: any) => {
+        console.error(e);
+    };
 ```
 
 The interface for options is as follows

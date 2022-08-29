@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "publisher": "haneefdm",
     "repository": {
         "type": "git",
@@ -20,7 +20,7 @@
     ],
     "icon": "icon.png",
     "galleryBanner": {
-        "color": "#6f7ab3",
+        "color": "#07155c",
         "theme": "dark"
     },
     "activationEvents": [

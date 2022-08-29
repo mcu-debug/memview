@@ -200,7 +200,7 @@ export class DualViewDoc {
             const oldStatus = doc.sessionStatus;
             if (doc.sessionId !== sessionId) {
                 if (
-                    status === 'started' &&
+                    (status === 'started' || status === 'stopped') &&
                     (sessionName === doc.sessionName || !doc.sessionName) &&
                     (doc.wsFolder === wsFolder || !doc.wsFolder)
                 ) {
@@ -213,6 +213,10 @@ export class DualViewDoc {
                     doc.wsFolder = wsFolder;
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                     doc.memory.deleteHistory();
+                    if (status === 'stopped') {
+                        doc.markAsStale();
+                        doc.sessionStatus = DocDebuggerStatus.Stopped;
+                    }
                 }
             } else {
                 doc.isReady = status === 'stopped';
@@ -304,7 +308,6 @@ export class DualViewDoc {
             };
             return ret;
         } else {
-            debugger;
             return DummyByte;
         }
     }
@@ -364,6 +367,7 @@ export class DualViewDoc {
         return old;
     }
 
+    // This is only called from within VSCode and not from the WebView
     private static addDocument(doc: DualViewDoc, makeCurrent = false) {
         DualViewDoc.allDocuments[doc.docId] = doc;
         if (makeCurrent) {
@@ -371,6 +375,7 @@ export class DualViewDoc {
         }
     }
 
+    // This is only called from within VSCode and not from the WebView
     static removeDocument(docOrId: DualViewDoc | string) {
         const id = (docOrId as string) || (docOrId as DualViewDoc).docId;
         const doc = DualViewDoc.allDocuments[id];
@@ -387,6 +392,7 @@ export class DualViewDoc {
         delete DualViewDoc.allDocuments[id];
     }
 
+    // This is only called from within VSCode and not from the WebView
     static setCurrentDoc(docOrId: DualViewDoc | string) {
         const oldId = DualViewDoc.currentDoc?.docId;
         const id: string =
@@ -399,6 +405,7 @@ export class DualViewDoc {
             DualViewDoc.currentDoc = doc;
         }
         if (doc && oldId !== doc?.docId) {
+            // Don't think the following is needed
             doc.emitGlobalEvent(DualViewDocGlobalEventType.CurrentDoc);
         }
     }
@@ -566,10 +573,6 @@ class MemPages {
 
     private getSlot(addr: bigint): number {
         const offset = addr - this.baseAddress;
-        if (offset < 0 || offset > 1024 * 1024) {
-            // eslint-disable-next-line no-debugger
-            debugger;
-        }
         const slot = Math.floor(Number(offset) / DualViewDoc.PageSize);
         return slot;
     }
@@ -691,10 +694,6 @@ class MemPages {
                     })
                     .catch((e) => {
                         console.error('getMemory Failed', e);
-                        if (this.first) {
-                            this.first = false;
-                            debugger;
-                        }
                         resolve({ current: -1, previous: -1 });
                     });
             });

@@ -34,15 +34,17 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
 
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
-        if (arg.sessionId) {
-            this.setState({ sessionId: arg.sessionId });
+        const newState: IMemViewPanelState = { ...this.state };
+        if (arg.docId && arg.docId !== this.state.docId) {
+            newState.docId = arg.docId;
         }
-        if (arg.sessionStatus) {
-            this.setState({ sessionStatus: arg.sessionStatus });
+        if (arg.sessionId && arg.sessionId !== this.state.sessionId) {
+            newState.sessionId = arg.sessionId;
         }
-        if (arg.docId) {
-            this.setState({ docId: arg.docId });
+        if (arg.sessionStatus && arg.sessionStatus !== this.state.sessionStatus) {
+            newState.sessionStatus = arg.sessionStatus;
         }
+        this.setState(newState);
     }
 
     onResize() {
@@ -96,12 +98,11 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         // eslint-disable-next-line no-debugger
         const value = event?.target?.value;
         console.log(`In currentDocChanged ${value}`);
-        if (value) {
-            DualViewDoc.setCurrentDoc(value);
-            if (value !== UnknownDocId) {
-                // This one only exists in the webview side
-                vscodePostCommandNoResponse(this.createCmd('select'));
-            }
+        if (value && value !== UnknownDocId) {
+            const cmd = this.createCmd('select');
+            cmd.docId = value; // Other items in cmd don't matter
+            cmd.sessionId = '';
+            vscodePostCommandNoResponse(cmd);
         }
     }
 
@@ -123,12 +124,13 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         const isStopped = this.state.sessionStatus === DocDebuggerStatus.Stopped;
         let key = 0;
         return (
-            <div
-                className='toolbar'
-                style={{ width: 'auto' }}
-                onChange={this.currentDocChangedFunc}
-            >
-                <VSCodeDropdown key={key++} position='below' value={this.state.docId}>
+            <div className='toolbar' style={{ width: 'auto' }}>
+                <VSCodeDropdown
+                    key={key++}
+                    position='below'
+                    value={this.state.docId}
+                    onChange={this.currentDocChangedFunc}
+                >
                     {docItems}
                 </VSCodeDropdown>
                 <span>&nbsp;</span>
@@ -140,13 +142,17 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 >
                     <span className='codicon codicon-add'></span>
                 </VSCodeButton>
-                <VSCodeButton key={key++} appearance='icon' title='Edit memory view properties'>
+                <VSCodeButton
+                    key={key++}
+                    appearance='icon'
+                    title='Edit memory view properties. Coming soon'
+                >
                     <span className='codicon codicon-edit'></span>
                 </VSCodeButton>
                 <VSCodeButton
                     key={key++}
                     appearance='icon'
-                    title='Save changes to program memory'
+                    title='Save changes to program memory. Coming soon'
                     disabled={!isModified || !isStopped}
                     onClick={this.onClickSaveFunc}
                 >
@@ -159,7 +165,10 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     ></span>
                 </VSCodeButton>
                 <VSCodeButton key={key++} appearance='icon' onClick={this.onClickSettingsFunc}>
-                    <span className='codicon codicon-gear' title='Edit global settings'></span>
+                    <span
+                        className='codicon codicon-gear'
+                        title='Edit global settings. Coming soon'
+                    ></span>
                 </VSCodeButton>
                 <span className='debug-status'>Status: {status}</span>
                 <VSCodeButton

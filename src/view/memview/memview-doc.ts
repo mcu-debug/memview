@@ -303,7 +303,6 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     static saveState() {
         const state = MemViewPanelProvider.context.workspaceState;
         const obj = DualViewDoc.storeSerializableAll(true);
-        console.log(obj);
         state.update('version', MemViewPanelProvider.stateVersion);
         state.update(MemViewPanelProvider.stateKeyName, obj);
     }
@@ -403,6 +402,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             }
                             case 'select': {
                                 DualViewDoc.setCurrentDoc(body.docId);
+                                this.updateHtmlForInit();
                                 break;
                             }
                             case 'refresh': {
