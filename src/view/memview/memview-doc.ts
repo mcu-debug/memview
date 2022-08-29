@@ -3,6 +3,7 @@ import querystring from 'node:querystring';
 import { uuid } from 'uuidv4';
 import { readFileSync } from 'node:fs';
 import { DualViewDoc } from './dual-view-doc';
+import { MemViewExtension } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
@@ -475,9 +476,15 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
     }
 
-    private showPanel(refresh = true) {
+    private async showPanel(refresh = true) {
         if (!this.webviewView || !this.webviewView.visible) {
             // Following will automatically refresh
+            try {
+                await MemViewExtension.enableMemoryView();
+            }
+            catch {
+                console.error('Why did  MemViewExtension.enableMemoryView() fail');
+            }
             vscode.commands.executeCommand(MemViewPanelProvider.viewType + '.focus');
         } else if (refresh) {
             MemViewPanelProvider.Provider.updateHtmlForInit();

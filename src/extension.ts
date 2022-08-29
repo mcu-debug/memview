@@ -43,8 +43,8 @@ export interface MemviewUriOptions {
     wsFolder?: string;          // Must be a Uri.toString() of an actual wsFolder for the session
 }
 
-class MemView {
-    static Extension: MemView;
+export class MemViewExtension {
+    static Extension: MemViewExtension;
     private toggleMemoryView() {
         const config = vscode.workspace.getConfiguration('memview', null);
         const isEnabled = !config.get('showMemoryPanel', false);
@@ -52,6 +52,15 @@ class MemView {
         config.update('showMemoryPanel', isEnabled);
         const status = isEnabled ? `visible in the '${panelLocation}' area` : 'hidden';
         vscode.window.showInformationMessage(`Memory views are now ${status}`);
+    }
+
+    static async enableMemoryView() {
+        const config = vscode.workspace.getConfiguration('memview', null);
+        const isEnabled = config.get('showMemoryPanel', false);
+        if (!isEnabled) {
+            await config.update('showMemoryPanel', true);
+            MemViewExtension.Extension.setContexts();
+        }
     }
 
     private onSettingsChanged(_e: vscode.ConfigurationChangeEvent) {
@@ -71,7 +80,7 @@ class MemView {
     }
 
     constructor(public context: vscode.ExtensionContext) {
-        MemView.Extension = this;
+        MemViewExtension.Extension = this;
         try {
             DebugTrackerFactory.register(context);
             // MemviewDocumentProvider.register(context);
@@ -115,11 +124,11 @@ class MemView {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    new MemView(context);
+    new MemViewExtension(context);
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-    MemView.Extension.onDeactivate();
+    MemViewExtension.Extension.onDeactivate();
     console.log('Deactivating memview');
 }

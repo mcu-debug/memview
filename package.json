@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "publisher": "haneefdm",
     "repository": {
         "type": "git",
@@ -39,7 +39,7 @@
             {
                 "category": "MemoryView",
                 "command": "memview.hello",
-                "title": "Force 'memview' extension to load"
+                "title": "Testing: Force 'memview' extension to load"
             },
             {
                 "category": "MemoryView",
@@ -98,7 +98,7 @@
                         "editor"
                     ],
                     "default": "panel",
-                    "description": "`editor` shows memory views in the Editors area. Default is in the Panels area along with the `Debug Console`"
+                    "description": "Only 'panel' has been implemented. `editor` shows memory views in the Editors area. Default is in the Panels area along with the `Debug Console`"
                 }
             }
         }
