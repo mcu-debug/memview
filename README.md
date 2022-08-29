@@ -23,7 +23,7 @@ We would like to eventually launch memory views from the Variables and Watch win
 
 -   NOTE: Editing features are not yet ready for use. You can edit but the edits will not be saved to your program
 
-Your views are preserved across restarts of VSCode window. They are saved on a workspace basis. We have three stages of a memory view
+Your views are preserved across restarts of VSCode window. They are saved on a workspace basis. We have three states for a memory view
 
 -   `Orphaned`: Not connected to a debugger and will display the last seen values if they were ever extracted. Every time a new debug session starts (of the supported debuggers), we try to see if an orphaned memory view can be re-attached to the session. You will see an indication of that in the toolbar.
 -   `Busy`: Attached to the debugger but the program is busy. While it is busy, no updates to memory views can happen, while it is possible to read memory while the program is running, most gdb based debuggers do not allow this and we don't know which debuggers are capable of that.
