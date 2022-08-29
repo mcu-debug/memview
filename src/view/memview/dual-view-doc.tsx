@@ -148,11 +148,11 @@ export class DualViewDoc {
 
     async getStartAddress(): Promise<bigint> {
         if (!this.startAddressStale) {
-            return Promise.resolve(this.baseAddress);
+            return Promise.resolve(this.startAddress);
         }
         const arg: ICmdGetStartAddress = {
             expr: this.expr,
-            def: this.baseAddress.toString(),
+            def: this.startAddress.toString(),
             type: CmdType.GetStartAddress,
             sessionId: this.sessionId,
             docId: this.docId
@@ -167,7 +167,7 @@ export class DualViewDoc {
             }
         } catch {}
         this.startAddressStale = false;
-        return Promise.resolve(this.baseAddress);
+        return Promise.resolve(this.startAddress);
     }
 
     async getMemoryPage(addr: bigint, nBytes: number): Promise<Uint8Array> {
@@ -380,12 +380,21 @@ export class DualViewDoc {
         const id = (docOrId as string) || (docOrId as DualViewDoc).docId;
         const doc = DualViewDoc.allDocuments[id];
         if (doc === DualViewDoc.currentDoc) {
+            const values = Object.getOwnPropertyNames(DualViewDoc.allDocuments);
+            let pos = values.findIndex((v) => v === doc.docId);
             DualViewDoc.currentDoc = undefined;
             while (DualViewDoc.currentDocStack.length) {
                 const oldId = DualViewDoc.currentDocStack.pop();
                 if (oldId && DualViewDoc.allDocuments[oldId]) {
-                    DualViewDoc.currentDoc = DualViewDoc.allDocuments[oldId];
+                    DualViewDoc.setCurrentDoc(oldId);
                     break;
+                }
+            }
+            if (!DualViewDoc.currentDoc) {
+                values.splice(pos, 1);
+                if (values.length > 0) {
+                    pos = pos % values.length;
+                    DualViewDoc.setCurrentDoc(values[pos]);
                 }
             }
         }
@@ -503,7 +512,10 @@ export class DualViewDoc {
             doc.isReady = false;
             lastDoc = doc;
         }
-        if (DualViewDoc.InWebview() && Object.entries(DualViewDoc.allDocuments).length === 0) {
+        if (
+            DualViewDoc.InWebview() &&
+            Object.getOwnPropertyNames(DualViewDoc.allDocuments).length === 0
+        ) {
             lastDoc = DualViewDoc.createDummyDoc();
         }
         if (!DualViewDoc.currentDoc && lastDoc) {

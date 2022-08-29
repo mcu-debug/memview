@@ -14,7 +14,7 @@ This was originally conceived as part of the [Cortex-Debug](https://github.com/M
 
 We would like to eventually launch memory views from the Variables and Watch windows. But this will require some cooperation from core VSCode.
 
-## Usage (Manual)
+## Usage (Manually within VSCode)
 
 -   Use the Command Palette and select `MemoryView: Add new memory view...` while a debug session is paused.
 -   It will ask you for an address or a C-style expression that can be interpreted by the debugger to return an address. In expressions, try to use global variables or else things might not work when we try to refresh the view
@@ -29,10 +29,15 @@ Your views are preserved across restarts of VSCode window. They are saved on a w
 -   `Busy`: Attached to the debugger but the program is busy. While it is busy, no updates to memory views can happen, while it is possible to read memory while the program is running, most gdb based debuggers do not allow this and we don't know which debuggers are capable of that.
 -   **`Paused`**: The program is in paused state and we are ready to update memory. A refresh is automatically done for visible areas and more data is fetched as needed. When a refresh occurs and there is previous data available, changed areas are marked as seen in the screenshot above
 
-## Usage (by another extension)
+## Usage (Manually from a browser)
+
+You can enter URL that of the form vscode://haneefdm.memview/ADDRESS-OR-EXPRESSION to open a new view (best done when the debugger is in paused state). For instance entering vscode://haneefdm.memview/0x20000670 will open a view for address 0x20000670. All the options mentioned in the section below also apply
+
+## Usage (programmatically by another extension)
 
 -   We can provide an API and it is planned and we will implement as soon as there is some extension that needs it.
 -   Any extension can create a memory view using the VSCode API to open a URI. The first extension to use it will probably be Cortex-Debug and this will be refined as needed
+-   Please don't use this in production yet until the API is deemed ready. Feel free to experiment.
 
 ```typescript
 const options: MemviewUriOptions = {

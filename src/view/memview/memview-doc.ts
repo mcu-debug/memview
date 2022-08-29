@@ -266,7 +266,9 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
 
         let session = vscode.debug.activeDebugSession;
-        const sessionId = (options.sessionId === 'current' && session) ? session.id : cvt(options.sessionId) || session?.id || uuid();
+        const optSessionId = cvt(options.sessionId);
+        const useCurrent = (!optSessionId || optSessionId === 'current');
+        const sessionId = useCurrent && session ? session.id : optSessionId || session?.id || uuid();
         const sessionInfo = DebuggerTracker.getSessionById(sessionId);
         if (sessionInfo) {
             session = sessionInfo.session;
@@ -277,7 +279,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             docId: uuid(),
             sessionId: sessionId,
             sessionName: session?.name || cvt(options.sessionName) || '',
-            displayName: cvt(options.displayName) || path || expr || '',
+            displayName: cvt(options.displayName) || path || expr || '0',
             expr: expr || path,
             wsFolder: session?.workspaceFolder?.uri.toString() || cvt(options.wsFolder) || '',
             startAddress: '',
@@ -297,7 +299,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 return Promise.reject(new Error(`MemView URI handler: Expression ${expr} failed to evaluate: ${e}`));
             });
         } else {
+            let msg = `MemView URI handler: New view for ${props.expr} added. It will have contents updated when program is paused or started.`;
+            if (DualViewDoc.currentDoc) {       // There is already one!
+                props.isCurrentDoc = false;
+                msg += ' You will have to change the current view manually since there is already a view displayed';
+            }
+            vscode.window.showInformationMessage(msg);
             new DualViewDoc(props);
+            MemViewPanelProvider.Provider.showPanel();
         }
     }
 
@@ -348,8 +357,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         const doc = DualViewDoc.getDocumentById(body.docId);
                         const memCmd = (body as ICmdGetStartAddress);
                         if (doc) {
+                            const oldAddr = doc.startAddress;
                             doc.getStartAddress().then((v) => {
-                                this.postResponse(body, v.toString());
+                                if (oldAddr !== v) {
+                                    // Do it the lazy way for now.
+                                    this.updateHtmlForInit();
+                                } else {
+                                    this.postResponse(body, v.toString());
+                                }
                             });
                         } else {
                             this.postResponse(body, memCmd.def);
