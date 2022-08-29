@@ -49,10 +49,9 @@ vscode.env.openExternal(uri).then((success: boolean) => {
     // One problem right now is that it always seems to succeed even when a view did
     // not start successfully. Please let us know of issues and we will figure it out
     console.log(`Operation URI open: success=${success}`);
-}),
-    (e: any) => {
-        console.error(e);
-    };
+}), (e: any) => {
+    console.error(e);
+};
 ```
 
 The interface for options is as follows
