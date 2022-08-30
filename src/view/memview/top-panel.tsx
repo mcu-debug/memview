@@ -4,10 +4,21 @@ import {
     VSCodeButton,
     VSCodeDivider,
     VSCodeDropdown,
-    VSCodeOption
+    VSCodeOption,
+    VSCodeRadio,
+    VSCodeRadioGroup,
+    VSCodeTextField
 } from '@vscode/webview-ui-toolkit/react';
 import { vscodePostCommandNoResponse } from './webview-globals';
-import { CmdButtonName, CmdType, ICmdButtonClick, UnknownDocId } from './shared';
+import {
+    CmdButtonName,
+    CmdType,
+    EndianType,
+    ICmdButtonClick,
+    IModifiableProps,
+    RowFormatType,
+    UnknownDocId
+} from './shared';
 
 export interface IMemViewPanelProps {
     junk: string;
@@ -106,12 +117,31 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         }
     }
 
+    private getViewProps(): IViewSettingsProps {
+        const props: IViewSettingsProps = {
+            onDone: this.onEditPropsDone.bind(this),
+            expr: DualViewDoc.currentDoc?.expr || '0',
+            displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
+            endian: 'little',
+            format: '1-byte'
+        };
+        return props;
+    }
+
+    private onClickEditPropFunc = this.onClickEditProp.bind(this);
+    private onClickEditProp(event: any) {
+        ViewSettings.open(event, this.getViewProps());
+    }
+    private onEditPropsDone(props: IViewSettingsProps | undefined) {
+        console.log(props);
+    }
+
     render() {
         console.log('In MemViewToolbar.render');
         const docItems = [];
         let count = 0;
         let status = 'No status';
-        for (const doc of DualViewDoc.getDocumentsList()) {
+        for (const doc of DualViewDoc.getBasicDocumentsList()) {
             docItems.push(
                 <VSCodeOption key={count} selected={doc.isCurrent} value={doc.docId}>
                     {doc.displayName}
@@ -146,6 +176,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     key={key++}
                     appearance='icon'
                     title='Edit memory view properties. Coming soon'
+                    onClick={this.onClickEditPropFunc}
                 >
                     <span className='codicon codicon-edit'></span>
                 </VSCodeButton>
@@ -182,6 +213,187 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     <span className='codicon codicon-close'></span>
                 </VSCodeButton>
                 <VSCodeDivider key={key++} role='presentation'></VSCodeDivider>
+                <ViewSettings {...this.getViewProps()}></ViewSettings>
+            </div>
+        );
+    }
+}
+
+interface IViewSettingsProps extends IModifiableProps {
+    onDone: (props: IViewSettingsProps | undefined) => void;
+}
+
+interface IViewSettingsState extends IViewSettingsProps {
+    isOpen: boolean;
+    clientX: number;
+    clientY: number;
+}
+export class ViewSettings extends React.Component<IViewSettingsProps, IViewSettingsState> {
+    static GlobalPtr: ViewSettings;
+    private exprRef = React.createRef<any>();
+    private displayNameRef = React.createRef<any>();
+    private endianRef = React.createRef<any>();
+    private formatRef = React.createRef<any>();
+
+    constructor(props: IViewSettingsProps) {
+        super(props);
+        this.state = {
+            ...props,
+            isOpen: false,
+            clientX: 0,
+            clientY: 0
+        };
+        ViewSettings.GlobalPtr = this;
+    }
+
+    static open(event: any, props: IViewSettingsProps) {
+        event.preventDefault();
+        this.GlobalPtr.setState({
+            ...props,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            isOpen: true
+        });
+    }
+
+    private onClickCloseFunc = this.onClickClose.bind(this);
+    private onClickClose(event: any) {
+        event && event.preventDefault();
+        this.setState({
+            isOpen: false
+        });
+        this.state.onDone(undefined);
+    }
+
+    private onClickOkayFunc = this.onClickOkay.bind(this);
+    private onClickOkay(event: any) {
+        event && event.preventDefault();
+        this.setState({
+            isOpen: false
+        });
+
+        const ret = { ...this.state };
+        let changed = false;
+        if (ret.expr !== this.exprRef.current.value.trim()) {
+            ret.expr = this.exprRef.current.value.trim();
+            changed = true;
+        }
+        if (ret.displayName !== this.displayNameRef.current.value.trim()) {
+            ret.displayName = this.displayNameRef.current.value.trim();
+            changed = true;
+        }
+        if (ret.endian !== this.endianRef.current.value.trim()) {
+            ret.endian = this.endianRef.current.value.trim();
+            changed = true;
+        }
+        if (ret.format !== this.formatRef.current.value.trim()) {
+            ret.format = this.formatRef.current.value.trim();
+            changed = true;
+        }
+
+        this.state.onDone(changed ? ret : undefined);
+    }
+
+    render(): React.ReactNode {
+        let key = 0;
+        const bigLabel = 'Address: Constant or GDB Expression';
+        return (
+            <div style={{ display: +this.state.isOpen ? '' : 'none' }}>
+                <div
+                    className='popup'
+                    id='view-settings'
+                    style={{
+                        width: `${bigLabel.length + 10}ch`,
+                        // top: this.state.clientY,
+                        top: 0,
+                        left: this.state.clientX
+                    }}
+                >
+                    <VSCodeButton
+                        key={key++}
+                        appearance='icon'
+                        style={{ float: 'right' }}
+                        title='Close this memory view'
+                        onClick={this.onClickCloseFunc}
+                    >
+                        <span className='codicon codicon-close'></span>
+                    </VSCodeButton>
+                    <VSCodeTextField
+                        key={key++}
+                        autofocus
+                        name='expr'
+                        type='text'
+                        style={{ width: '95%' }}
+                        ref={this.exprRef}
+                        value={this.state.expr}
+                    >
+                        {bigLabel}
+                    </VSCodeTextField>
+                    <br key={key++}></br>
+                    <VSCodeTextField
+                        key={key++}
+                        name='displayName'
+                        type='text'
+                        style={{ width: '95%' }}
+                        ref={this.displayNameRef}
+                        value={this.state.displayName}
+                    >
+                        Display Name
+                    </VSCodeTextField>
+                    <br key={key++}></br>
+                    <VSCodeRadioGroup
+                        key={key++}
+                        ref={this.endianRef}
+                        orientation='horizontal'
+                        value={this.state.format}
+                    >
+                        <span key={key++} className='radio-label'>
+                            Format
+                        </span>
+                        <VSCodeRadio key={key++} value='1-byte'>
+                            1-byte
+                        </VSCodeRadio>
+                        <VSCodeRadio key={key++} value='4-byte'>
+                            4-byte
+                        </VSCodeRadio>
+                        <VSCodeRadio key={key++} value='8-byte'>
+                            8-byte
+                        </VSCodeRadio>
+                    </VSCodeRadioGroup>
+                    <VSCodeRadioGroup
+                        key={key++}
+                        ref={this.formatRef}
+                        orientation='horizontal'
+                        value={this.state.endian}
+                    >
+                        <span key={key++} className='radio-label'>
+                            Endianness
+                        </span>
+                        <VSCodeRadio key={key++} value='little'>
+                            Little
+                        </VSCodeRadio>
+                        <VSCodeRadio key={key++} value='big'>
+                            Big
+                        </VSCodeRadio>
+                    </VSCodeRadioGroup>
+                    <VSCodeButton
+                        key={key++}
+                        appearance='primary'
+                        style={{ float: 'right', margin: '3px' }}
+                        onClick={this.onClickOkayFunc}
+                    >
+                        Ok
+                    </VSCodeButton>
+                    <VSCodeButton
+                        key={key++}
+                        appearance='secondary'
+                        style={{ float: 'right', margin: '3px' }}
+                        onClick={this.onClickCloseFunc}
+                    >
+                        Cancel
+                    </VSCodeButton>
+                </div>
+                <div className='popup-background' onClick={this.onClickCloseFunc}></div>
             </div>
         );
     }

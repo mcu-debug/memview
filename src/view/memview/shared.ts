@@ -75,6 +75,15 @@ export interface IMemValue {
     inRange: boolean;
 }
 
+export type RowFormatType = '1-byte' | '4-byte' | '8-byte';
+export type EndianType = 'little' | 'big';
+
+export interface IModifiableProps {
+    expr: string;
+    displayName: string;
+    endian: EndianType;
+    format: RowFormatType;
+}
 export interface IWebviewDocInfo {
     displayName: string;
     sessionId: string;
@@ -83,6 +92,7 @@ export interface IWebviewDocInfo {
     isModified: boolean;
     isCurrent: boolean;
 }
+
 export type ModifiedXferMap = { [addr: string]: number };
 export interface IWebviewDocXfer {
     docId: string;
@@ -93,6 +103,8 @@ export interface IWebviewDocXfer {
     wsFolder: string;
     startAddress: string;
     isReadOnly: boolean; // Where to start reading.
+    format: RowFormatType;
+    endian: EndianType;
     isCurrentDoc?: boolean;
     maxBytes?: number;
     modifiedMap?: ModifiedXferMap;

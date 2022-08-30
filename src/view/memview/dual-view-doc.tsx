@@ -23,7 +23,9 @@ import {
     DebugSessionStatus,
     ICmdClientState,
     ICmdGetStartAddress,
-    UnknownDocId
+    UnknownDocId,
+    EndianType,
+    RowFormatType
 } from './shared';
 import { hexFmt64 } from './utils';
 
@@ -75,6 +77,8 @@ export class DualViewDoc {
     public maxAddress = 0n;
     public displayName: string;
     public expr: string;
+    public endian: EndianType;
+    public format: RowFormatType;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
@@ -94,6 +98,8 @@ export class DualViewDoc {
         this.setAddresses(BigInt(info.startAddress));
         this.displayName = info.displayName;
         this.expr = info.expr;
+        this.endian = info.endian ?? 'little';
+        this.format = info.format ?? '1-byte';
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
@@ -446,7 +452,7 @@ export class DualViewDoc {
         }, 100); // Is this enough delay?!?!?
     }
 
-    static getDocumentsList(): IWebviewDocInfo[] {
+    static getBasicDocumentsList(): IWebviewDocInfo[] {
         const ret: IWebviewDocInfo[] = [];
         for (const key of Object.getOwnPropertyNames(DualViewDoc.allDocuments)) {
             const doc = DualViewDoc.allDocuments[key];
@@ -478,6 +484,8 @@ export class DualViewDoc {
             sessionName: this.sessionName,
             displayName: this.displayName,
             expr: this.expr,
+            endian: this.endian,
+            format: this.format,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
@@ -542,6 +550,8 @@ export class DualViewDoc {
             displayName: 'No memory views',
             wsFolder: '.',
             startAddress: '0',
+            endian: 'little',
+            format: '1-byte',
             maxBytes: initString.length,
             isCurrentDoc: true,
             clientState: {},

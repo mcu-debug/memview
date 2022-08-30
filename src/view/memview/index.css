@@ -95,8 +95,7 @@ body {
 
 .popup {
     position: fixed;
-    width: 4ch;
-    display: flex;
+    background-color: var(--vscode-editor-background);
     align-items: left;
     z-index: 1000;
 }
@@ -112,7 +111,7 @@ body {
     /* semi-transparent black  */
     background-color: var(--vscode-editor-background);
     /* background-color: #000;*/
-    opacity: 0.75;
+    opacity: 0.5;
 
     /* z-index must be below .popup and above everything else  */
     z-index: 900;
@@ -137,8 +136,14 @@ body {
 }
 
 .debug-status {
-    text-align: center; /* Vertical alignment */
+    text-align: center;
     justify-content: left; /* Horizontal alignment */
     vertical-align: sub;
     padding-left: 10px;
+}
+
+.radio-label {
+    align-items: baseline;
+    padding-top: 4px;
+    padding-right: 4px;
 }

@@ -23,6 +23,13 @@
         "color": "#07155c",
         "theme": "dark"
     },
+    "keywords": [
+        "cortex-debug",
+        "cppdbg",
+        "embedded",
+        "memory",
+        "cortex"
+    ],
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",

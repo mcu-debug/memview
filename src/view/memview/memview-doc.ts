@@ -283,6 +283,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             expr: expr || path,
             wsFolder: session?.workspaceFolder?.uri.toString() || cvt(options.wsFolder) || '',
             startAddress: '',
+            endian: 'little',
+            format: '1-byte',
             isReadOnly: !sessionInfo?.canWriteMemory,
             clientState: {},
             baseAddressStale: true,
@@ -315,6 +317,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         const obj = DualViewDoc.storeSerializableAll(true);
         state.update('version', MemViewPanelProvider.stateVersion);
         state.update(MemViewPanelProvider.stateKeyName, obj);
+        console.log('Finished saving state');
     }
 
     resolveWebviewView(
@@ -330,8 +333,10 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
 
         console.log('In resolveWebviewView');
         this.webviewView.onDidDispose((_e) => {
+            // This is never called when extension exits
             console.log('disposed webView');
             this.webviewView = undefined;
+            MemViewPanelProvider.saveState();
         });
 
         this.webviewView.onDidChangeVisibility(() => {
@@ -489,6 +494,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             this.webviewView.webview.html = MemviewDocumentProvider.getWebviewContent(
                 this.webviewView.webview, this.context, '');
         }
+        MemViewPanelProvider.saveState();
     }
 
     private async showPanel(refresh = true) {
@@ -516,6 +522,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 sessionName: session.name,
                 displayName: expr,
                 expr: expr,
+                endian: 'little',
+                format: '1-byte',
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
                 isReadOnly: !sessonInfo.canWriteMemory,
@@ -599,6 +607,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             sessionName: 'blah',
             displayName: '0xdeadbeef',
             expr: '0xdeafbeef',
+            format: '1-byte',
+            endian: 'little',
             wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,
