@@ -2,6 +2,7 @@ import * as React from 'react';
 import { DocDebuggerStatus, DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import {
     VSCodeButton,
+    VSCodeCheckbox,
     VSCodeDivider,
     VSCodeDropdown,
     VSCodeOption,
@@ -15,8 +16,8 @@ import {
     CmdType,
     EndianType,
     ICmdButtonClick,
+    ICmdSettingsChanged,
     IModifiableProps,
-    RowFormatType,
     UnknownDocId
 } from './shared';
 
@@ -58,10 +59,20 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         this.setState(newState);
     }
 
+    private onResizeTimeout: NodeJS.Timeout | undefined;
     onResize() {
-        // Just a dummy state to fore a redraw to re-render right justified elements
-        console.log('Window width = ', window.innerWidth);
-        this.setState({ width: window.innerWidth });
+        if (this.onResizeTimeout) {
+            console.log('Toolbar resize clearing timeout');
+            clearTimeout(this.onResizeTimeout);
+        }
+        this.onResizeTimeout = setTimeout(() => {
+            this.onResizeTimeout = undefined;
+            // Just a dummy state to fore a redraw to re-render right justified elements
+            console.log('Window width = ', window.innerWidth);
+            if (this.state.width !== window.innerWidth) {
+                this.setState({ width: window.innerWidth });
+            }
+        }, 100);
     }
 
     private createCmd(button: CmdButtonName) {
@@ -117,13 +128,12 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         }
     }
 
-    private getViewProps(): IViewSettingsProps {
-        const props: IViewSettingsProps = {
-            onDone: this.onEditPropsDone.bind(this),
+    private getViewProps(): IModifiableProps {
+        const props: IModifiableProps = {
             expr: DualViewDoc.currentDoc?.expr || '0',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
-            endian: 'little',
-            format: '1-byte'
+            endian: DualViewDoc.currentDoc?.endian || 'little',
+            format: DualViewDoc.currentDoc?.format || '1-byte'
         };
         return props;
     }
@@ -132,8 +142,17 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     private onClickEditProp(event: any) {
         ViewSettings.open(event, this.getViewProps());
     }
-    private onEditPropsDone(props: IViewSettingsProps | undefined) {
-        console.log(props);
+    private onEditPropsDoneFunc = this.onEditPropsDone.bind(this);
+    private onEditPropsDone(props: IModifiableProps | undefined) {
+        if (props && DualViewDoc.currentDoc) {
+            const cmd: ICmdSettingsChanged = {
+                settings: props,
+                type: CmdType.SettingsChanged,
+                sessionId: DualViewDoc.currentDoc.sessionId,
+                docId: DualViewDoc.currentDoc.docId
+            };
+            vscodePostCommandNoResponse(cmd);
+        }
     }
 
     render() {
@@ -152,6 +171,10 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         }
         const isModified = DualViewDoc.currentDoc?.isModified;
         const isStopped = this.state.sessionStatus === DocDebuggerStatus.Stopped;
+        const editProps: IViewSettingsProps = {
+            settings: this.getViewProps(),
+            onDone: this.onEditPropsDoneFunc
+        };
         let key = 0;
         return (
             <div className='toolbar' style={{ width: 'auto' }}>
@@ -213,17 +236,19 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     <span className='codicon codicon-close'></span>
                 </VSCodeButton>
                 <VSCodeDivider key={key++} role='presentation'></VSCodeDivider>
-                <ViewSettings {...this.getViewProps()}></ViewSettings>
+                <ViewSettings {...editProps}></ViewSettings>
             </div>
         );
     }
 }
 
-interface IViewSettingsProps extends IModifiableProps {
-    onDone: (props: IViewSettingsProps | undefined) => void;
+interface IViewSettingsProps {
+    settings: IModifiableProps;
+    onDone: (props: IModifiableProps | undefined) => void;
 }
 
-interface IViewSettingsState extends IViewSettingsProps {
+interface IViewSettingsState {
+    settings: IModifiableProps;
     isOpen: boolean;
     clientX: number;
     clientY: number;
@@ -234,22 +259,25 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private displayNameRef = React.createRef<any>();
     private endianRef = React.createRef<any>();
     private formatRef = React.createRef<any>();
+    private isBigEndian;
 
     constructor(props: IViewSettingsProps) {
         super(props);
         this.state = {
-            ...props,
+            settings: this.props.settings,
             isOpen: false,
             clientX: 0,
             clientY: 0
         };
+        this.isBigEndian = this.props.settings.endian === 'big';
         ViewSettings.GlobalPtr = this;
     }
 
-    static open(event: any, props: IViewSettingsProps) {
+    static open(event: any, settings: IModifiableProps) {
         event.preventDefault();
+        this.GlobalPtr.isBigEndian = settings.endian === 'big';
         this.GlobalPtr.setState({
-            ...props,
+            settings: settings,
             clientX: event.clientX,
             clientY: event.clientY,
             isOpen: true
@@ -262,7 +290,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.setState({
             isOpen: false
         });
-        this.state.onDone(undefined);
+        this.props.onDone(undefined);
     }
 
     private onClickOkayFunc = this.onClickOkay.bind(this);
@@ -272,7 +300,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             isOpen: false
         });
 
-        const ret = { ...this.state };
+        const ret = { ...this.state.settings };
         let changed = false;
         if (ret.expr !== this.exprRef.current.value.trim()) {
             ret.expr = this.exprRef.current.value.trim();
@@ -282,8 +310,9 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.displayName = this.displayNameRef.current.value.trim();
             changed = true;
         }
-        if (ret.endian !== this.endianRef.current.value.trim()) {
-            ret.endian = this.endianRef.current.value.trim();
+        const endian: EndianType = this.isBigEndian ? 'big' : 'little';
+        if (ret.endian !== endian) {
+            ret.endian = endian;
             changed = true;
         }
         if (ret.format !== this.formatRef.current.value.trim()) {
@@ -291,19 +320,24 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             changed = true;
         }
 
-        this.state.onDone(changed ? ret : undefined);
+        this.props.onDone(changed ? ret : undefined);
+    }
+
+    private onRadixChangedFunc = this.onRadixChanged.bind(this);
+    private onRadixChanged() {
+        this.isBigEndian = !this.isBigEndian;
     }
 
     render(): React.ReactNode {
         let key = 0;
-        const bigLabel = 'Address: Constant or GDB Expression';
+        const bigLabel = 'Address: Hex/decimal constant or expression';
         return (
             <div style={{ display: +this.state.isOpen ? '' : 'none' }}>
                 <div
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 10}ch`,
+                        width: `${bigLabel.length + 5}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -325,7 +359,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         type='text'
                         style={{ width: '95%' }}
                         ref={this.exprRef}
-                        value={this.state.expr}
+                        value={this.state.settings.expr}
                     >
                         {bigLabel}
                     </VSCodeTextField>
@@ -336,16 +370,16 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         type='text'
                         style={{ width: '95%' }}
                         ref={this.displayNameRef}
-                        value={this.state.displayName}
+                        value={this.state.settings.displayName}
                     >
                         Display Name
                     </VSCodeTextField>
                     <br key={key++}></br>
                     <VSCodeRadioGroup
                         key={key++}
-                        ref={this.endianRef}
+                        ref={this.formatRef}
                         orientation='horizontal'
-                        value={this.state.format}
+                        value={this.state.settings.format}
                     >
                         <span key={key++} className='radio-label'>
                             Format
@@ -360,22 +394,14 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             8-byte
                         </VSCodeRadio>
                     </VSCodeRadioGroup>
-                    <VSCodeRadioGroup
+                    <VSCodeCheckbox
+                        checked={this.isBigEndian}
+                        ref={this.endianRef}
                         key={key++}
-                        ref={this.formatRef}
-                        orientation='horizontal'
-                        value={this.state.endian}
+                        onChange={this.onRadixChangedFunc}
                     >
-                        <span key={key++} className='radio-label'>
-                            Endianness
-                        </span>
-                        <VSCodeRadio key={key++} value='little'>
-                            Little
-                        </VSCodeRadio>
-                        <VSCodeRadio key={key++} value='big'>
-                            Big
-                        </VSCodeRadio>
-                    </VSCodeRadioGroup>
+                        Big Endian
+                    </VSCodeCheckbox>
                     <VSCodeButton
                         key={key++}
                         appearance='primary'

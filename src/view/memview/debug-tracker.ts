@@ -228,7 +228,7 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 function appendMsgToTmpDir(str: string) {
     try {
         // eslint-disable-next-line no-constant-condition
-        if (true) {
+        if (false) {
             const fname = path.join(os.tmpdir(), 'memview-dbg-trace.txt');
             // console.log(`Write ${str} to file ${fname}`);
             if (!str.endsWith('\n')) {

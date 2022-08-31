@@ -25,7 +25,8 @@ import {
     ICmdGetStartAddress,
     UnknownDocId,
     EndianType,
-    RowFormatType
+    RowFormatType,
+    IModifiableProps
 } from './shared';
 import { hexFmt64 } from './utils';
 
@@ -127,6 +128,14 @@ export class DualViewDoc {
         this.startAddress = startAddress;
         this.baseAddress = (this.startAddress / 16n) * 16n;
         this.maxAddress = this.baseAddress + BigInt(1024 * 1024);
+    }
+
+    updateSettings(settings: IModifiableProps) {
+        this.displayName = settings.displayName;
+        this.expr = settings.expr;
+        this.endian = settings.endian;
+        this.format = settings.format;
+        // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
     }
 
     async setClientState<T>(key: string, value: T) {
@@ -632,7 +641,7 @@ class MemPages {
 
     setPage(addr: bigint, ary: Uint8Array, dbgCaller = 'MemPages.getValue') {
         // eslint-disable-next-line no-constant-condition
-        if (true) {
+        if (false) {
             const addrStr = hexFmt64(addr);
             console.log(
                 `${dbgCaller}, addr=${addrStr}, buf-length = ${ary.length}, Updating page, Webview = ${this.parentDoc.inWebview}`

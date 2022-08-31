@@ -7,7 +7,7 @@ import { MemViewExtension } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
-    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick
+    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged
 } from './shared';
 import { DebuggerTracker } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
@@ -218,7 +218,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.registerWebviewViewProvider(
                 MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
                 webviewOptions: {
-                    retainContextWhenHidden: true
+                    // retainContextWhenHidden: true
                 }
             }),
             vscode.window.registerUriHandler(MemViewPanelProvider.Provider)
@@ -431,6 +431,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                                 this.updateHtmlForInit();
                                 break;
                             }
+                        }
+                        break;
+                    }
+                    case CmdType.SettingsChanged: {
+                        const doc = DualViewDoc.getDocumentById(body.docId);
+                        if (doc) {
+                            doc.updateSettings((body as ICmdSettingsChanged).settings);
+                            this.updateHtmlForInit();
                         }
                         break;
                     }

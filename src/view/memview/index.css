@@ -35,11 +35,27 @@ body {
     width: 3ch;
 }
 
+.hex-cell-value-header4 {
+    width: 10ch;
+}
+
+.hex-cell-value-header8 {
+    width: 18ch;
+}
+
 .hex-cell-value {
     user-select: text;
     /* cursor: pointer;*/
     font-weight: bold;
     width: 3ch;
+}
+
+.hex-cell-value4 {
+    width: 10ch;
+}
+
+.hex-cell-value8 {
+    width: 18ch;
 }
 
 .hex-cell-char-header {
@@ -95,8 +111,9 @@ body {
 
 .popup {
     position: fixed;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--vscode-sideBar-background);
     align-items: left;
+    padding: 6px;
     z-index: 1000;
 }
 
@@ -108,10 +125,9 @@ body {
     bottom: 0;
     left: 0;
 
-    /* semi-transparent black  */
+    /* semi-transparent bg  */
     background-color: var(--vscode-editor-background);
-    /* background-color: #000;*/
-    opacity: 0.5;
+    opacity: 0.6;
 
     /* z-index must be below .popup and above everything else  */
     z-index: 900;

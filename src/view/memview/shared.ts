@@ -11,7 +11,8 @@ export enum CmdType {
     NewDocument = 'NewDocument',
     SaveClientState = 'SaveClientState',
     GetStartAddress = 'GetBaseAddress',
-    ButtonClick = 'ButtonClick'
+    ButtonClick = 'ButtonClick',
+    SettingsChanged = 'SettingsChanged'
 }
 
 export interface IMessage {
@@ -91,6 +92,10 @@ export interface IWebviewDocInfo {
     sessionStatus: string;
     isModified: boolean;
     isCurrent: boolean;
+}
+
+export interface ICmdSettingsChanged extends ICmdBase {
+    settings: IModifiableProps;
 }
 
 export type ModifiedXferMap = { [addr: string]: number };

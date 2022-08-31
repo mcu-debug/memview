@@ -15,9 +15,17 @@ import { IMemValue, UnknownDocId } from './shared';
 import { hexFmt64 as _hexFmt64 } from './utils';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
+interface IMemValue32or64 {
+    cur: bigint;
+    orig: bigint;
+    changed: boolean;
+    stale: boolean;
+    invalid: boolean;
+}
 interface IHexCell {
+    bytesPerCell: number;
     address: bigint;
-    byteInfo: IMemValue;
+    cellInfo: IMemValue | IMemValue32or64;
     onChange?: OnCellChangeFunc;
 }
 
@@ -28,6 +36,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     private static currentDOMElt: HTMLSpanElement | undefined = undefined; // createRef not working on span element
     private static lastGoodValue = '';
     private static newGoodValue = '';
+    private maxChars;
 
     constructor(public props: IHexCell) {
         super(props);
@@ -37,13 +46,14 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         this.state = {
             frozen: false
         };
+        this.maxChars = this.props.bytesPerCell * 2;
     }
 
     classNames = () => {
-        const byteInfo = this.props.byteInfo;
+        const byteInfo = this.props.cellInfo;
         const changed = byteInfo.orig !== byteInfo.cur || byteInfo.changed;
         return (
-            'hex-cell hex-cell-value' +
+            `hex-cell hex-cell-value hex-cell-value${this.props.bytesPerCell}` +
             (this.state.frozen ? ' hex-cell-value-dirty' : '') +
             (changed ? ' hex-cell-value-changed' : '')
         );
@@ -57,13 +67,15 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         while (val.length > 1 && val.startsWith('0')) {
             val = val.substring(1);
         }
-        if (val.length > 2 || val.length === 0 || /[^0-9a-f]]/.test(val)) {
+        if (val.length > this.maxChars || val.length === 0 || /[^0-9a-f]]/.test(val)) {
             return;
         }
+
+        // TODO: adjust for byte-length
         HexCellValue.lastGoodValue = val;
         const intVal = parseInt(val, 16);
-        if (this.props.byteInfo.cur !== intVal) {
-            this.props.byteInfo.cur = intVal;
+        if (this.props.cellInfo.cur !== intVal) {
+            this.props.cellInfo.cur = intVal;
             DualViewDoc.setCurrentDocByte(this.props.address, intVal);
             if (this.props.onChange) {
                 this.props.onChange(this.props.address, intVal);
@@ -72,9 +84,18 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     };
 
     valueStr = () => {
-        return this.props.byteInfo.cur >= 0
-            ? hexValuesLookup[(this.props.byteInfo.cur >>> 0) & 0xff]
-            : '~~';
+        if (this.props.bytesPerCell === 1) {
+            return this.props.cellInfo.cur >= 0
+                ? hexValuesLookup[((this.props.cellInfo as IMemValue).cur >>> 0) & 0xff]
+                : '~~';
+        } else {
+            const info = this.props.cellInfo as IMemValue32or64;
+            const value = info.cur;
+            const str = info.invalid
+                ? '~'.padStart(this.maxChars, '~')
+                : value.toString(16).padStart(this.maxChars, '0');
+            return str;
+        }
     };
 
     editable = () => {
@@ -241,10 +262,17 @@ export const HexCellEmptyHeader: React.FunctionComponent<{
 
 export const HexCellValueHeader: React.FunctionComponent<{
     value: number;
-}> = ({ value }) => {
-    const classNames = 'hex-cell hex-cell-value-header';
-    // const id = `hex-cell-value-header-${value}`;
-    const valueStr = hexValuesLookup[(value >>> 0) & 0xff];
+    bytesPerCell: number;
+}> = ({ value, bytesPerCell }) => {
+    const classNames = `hex-cell hex-cell-value-header hex-cell-value-header${bytesPerCell} `;
+    let valueStr = hexValuesLookup[(value >>> 0) & 0xff];
+    if (bytesPerCell !== 1) {
+        if (DualViewDoc.currentDoc?.endian === 'big') {
+            valueStr = valueStr + '-' + hexValuesLookup[((value + bytesPerCell - 1) >>> 0) & 0xff];
+        } else {
+            valueStr = hexValuesLookup[((value + bytesPerCell - 1) >>> 0) & 0xff] + '-' + valueStr;
+        }
+    }
     return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -253,27 +281,32 @@ export interface IHexHeaderRow {
 }
 
 export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
+    const fmt = DualViewDoc.currentDoc?.format;
+    const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
     const classNames = 'hex-header-row';
-    const ary = [];
-    for (let x = 0; x < 16; x++) {
-        ary.push(x);
+    const addrCells: JSX.Element[] = [];
+    let key = 2;
+    for (let i = 0; i < 16; i += bytesPerCell) {
+        addrCells.push(<HexCellValueHeader key={key++} value={i} bytesPerCell={bytesPerCell} />);
     }
-    const decodedText = 'Decoded Bytes'.padEnd(16, ' ').split('');
+    const decodedTextCells: JSX.Element[] = [];
+    if (bytesPerCell === 1) {
+        const decodedText = 'Decoded Bytes'.padEnd(16, ' ').split('');
+        decodedText.map((v) => {
+            decodedTextCells.push(<HexCellEmptyHeader key={key++} fillChar={v} />);
+        });
+    }
     return (
         <div className={classNames}>
             <HexCellEmptyHeader
-                key={1}
+                key={key++}
                 length={18}
                 fillChar='.'
                 cls='hex-cell-address hex-cell-invisible'
             />
-            {ary.map((v, i) => {
-                return <HexCellValueHeader key={i + 2} value={v} />;
-            })}
+            {addrCells}
             <HexCellEmpty key={100} length={1} fillChar='.' cls='hex-cell-invisible' />
-            {decodedText.map((v, i) => {
-                return <HexCellEmptyHeader key={i + 18} fillChar={v} />;
-            })}
+            {decodedTextCells}
         </div>
     );
 }
@@ -287,6 +320,7 @@ export interface IHexDataRow {
 
 interface IHexDataRowState {
     bytes: IMemValue[];
+    words: IMemValue32or64[];
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
@@ -295,15 +329,72 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private sessionStatus = UnknownDocId;
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
+    private static bytePerWord: 1 | 4 | 8;
+    private static byteOrder: number[] = [];
+    private static isBigEndian = false;
     constructor(public props: IHexDataRow) {
         super(props);
+        const fmt = DualViewDoc.currentDoc?.format;
+        if (HexDataRow.byteOrder.length === 0) {
+            HexDataRow.bytePerWord = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
+            HexDataRow.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
+            if (HexDataRow.isBigEndian) {
+                for (let ix = 0; ix < HexDataRow.bytePerWord; ix++) {
+                    HexDataRow.byteOrder.push(ix);
+                }
+            } else {
+                for (let ix = HexDataRow.bytePerWord - 1; ix >= 0; ix--) {
+                    HexDataRow.byteOrder.push(ix);
+                }
+            }
+        }
         const bytes = [];
         for (let ix = 0; ix < 16; ix++) {
             bytes[ix] = DummyByte;
         }
         this.state = {
-            bytes: bytes
+            bytes: bytes,
+            words: this.convertToWords(bytes)
         };
+    }
+
+    private convertToWords(bytes: IMemValue[]): IMemValue32or64[] {
+        const ret: IMemValue32or64[] = [];
+        if (HexDataRow.bytePerWord === 1) {
+            return ret;
+        }
+        const len = HexDataRow.bytePerWord;
+        for (let start = 0; start < 16; start += len) {
+            let curV = 0n;
+            let origV = 0n;
+            let invalid = false;
+            let changed: boolean | undefined = false;
+            let stale: boolean | undefined = false;
+            for (const ix of HexDataRow.byteOrder) {
+                const byte = bytes[start + ix];
+                if (byte.cur < 0) {
+                    invalid = true;
+                    break;
+                }
+                changed = changed || byte.changed;
+                stale = stale || byte.stale;
+                if (HexDataRow.isBigEndian) {
+                    curV = (curV << 8n) | BigInt(byte.cur & 0xff);
+                    origV = (origV << 8n) | BigInt(byte.orig & 0xff);
+                } else {
+                    curV = (curV << 8n) | BigInt(byte.cur & 0xff);
+                    origV = (origV << 8n) | BigInt(byte.orig & 0xff);
+                }
+            }
+            ret.push({
+                cur: curV,
+                orig: origV,
+                changed: !!changed,
+                stale: !!changed,
+                invalid: invalid
+            });
+        }
+        return ret;
     }
 
     private async rowChanged(address: bigint, newVal: number) {
@@ -319,8 +410,9 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         if (this.mountStatus) {
             // Get the first byte of the row. The rest should be in the same page
             // so do it the fast way, since the bytes should have been loaded by now
-            const ret = DualViewDoc.getRowUnsafe(this.props.address);
-            this.setState({ bytes: ret });
+            const bytes = DualViewDoc.getRowUnsafe(this.props.address);
+            const words = this.convertToWords(bytes);
+            this.setState({ bytes: bytes, words: words });
         }
     }
 
@@ -362,25 +454,38 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         const classNames = 'hex-data-row ' + (this.props.cls || '');
         const values = [];
         const chars = [];
-        for (let ix = 0; ix < 16; ix++) {
-            const addr = this.props.address + BigInt(ix);
+        let key = 1;
+        for (let ix = 0; ix < 16 / HexDataRow.bytePerWord; ix++) {
+            const addr = this.props.address + BigInt(ix * HexDataRow.bytePerWord);
             values.push(
                 <HexCellValue
-                    key={ix + 2}
+                    bytesPerCell={HexDataRow.bytePerWord}
+                    key={key++}
                     address={addr}
-                    byteInfo={this.state.bytes[ix]}
+                    cellInfo={
+                        HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]
+                    }
                     onChange={this.onRowChangeFunc}
                 />
             );
-            chars.push(
-                <HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={ix + 18} />
-            );
+            if (HexDataRow.bytePerWord === 1) {
+                chars.push(
+                    <HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={key++} />
+                );
+            }
         }
-        const gap = <HexCellEmpty length={1} fillChar='.' cls='hex-cell-invisible'></HexCellEmpty>;
+        const gap = (
+            <HexCellEmpty
+                key={key++}
+                length={1}
+                fillChar='.'
+                cls='hex-cell-invisible'
+            ></HexCellEmpty>
+        );
         return (
             <div className={classNames} style={this.props.style || ''}>
                 <HexCellAddress key={1} address={this.props.address} />
-                <div>
+                <div key={2}>
                     {values}
                     {gap}
                     {chars}
