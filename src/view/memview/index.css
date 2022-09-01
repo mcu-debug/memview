@@ -163,3 +163,15 @@ body {
     padding-top: 4px;
     padding-right: 4px;
 }
+
+.dropdown-label-div {
+    margin-top: 10px;
+    display: inline-flex;
+    width: 50%;
+}
+
+.dropdown-label {
+    vertical-align: bottom;
+    margin-top: 4px;
+    margin-right: 1ch;
+}

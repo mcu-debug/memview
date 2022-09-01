@@ -2,12 +2,9 @@ import * as React from 'react';
 import { DocDebuggerStatus, DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import {
     VSCodeButton,
-    VSCodeCheckbox,
     VSCodeDivider,
     VSCodeDropdown,
     VSCodeOption,
-    VSCodeRadio,
-    VSCodeRadioGroup,
     VSCodeTextField
 } from '@vscode/webview-ui-toolkit/react';
 import { vscodePostCommandNoResponse } from './webview-globals';
@@ -18,6 +15,7 @@ import {
     ICmdButtonClick,
     ICmdSettingsChanged,
     IModifiableProps,
+    RowFormatType,
     UnknownDocId
 } from './shared';
 
@@ -257,9 +255,8 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     static GlobalPtr: ViewSettings;
     private exprRef = React.createRef<any>();
     private displayNameRef = React.createRef<any>();
-    private endianRef = React.createRef<any>();
-    private formatRef = React.createRef<any>();
-    private isBigEndian;
+    private endian: string;
+    private format: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -269,19 +266,21 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             clientX: 0,
             clientY: 0
         };
-        this.isBigEndian = this.props.settings.endian === 'big';
+        this.endian = props.settings.endian;
+        this.format = props.settings.format;
         ViewSettings.GlobalPtr = this;
     }
 
     static open(event: any, settings: IModifiableProps) {
         event.preventDefault();
-        this.GlobalPtr.isBigEndian = settings.endian === 'big';
         this.GlobalPtr.setState({
             settings: settings,
             clientX: event.clientX,
             clientY: event.clientY,
             isOpen: true
         });
+        this.GlobalPtr.endian = settings.endian;
+        this.GlobalPtr.format = settings.format;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -310,30 +309,37 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.displayName = this.displayNameRef.current.value.trim();
             changed = true;
         }
-        const endian: EndianType = this.isBigEndian ? 'big' : 'little';
-        if (ret.endian !== endian) {
-            ret.endian = endian;
+
+        if (ret.endian !== this.endian) {
+            ret.endian = this.endian as EndianType;
             changed = true;
         }
-        if (ret.format !== this.formatRef.current.value.trim()) {
-            ret.format = this.formatRef.current.value.trim();
+
+        if (ret.format !== this.format) {
+            ret.format = this.format as RowFormatType;
             changed = true;
         }
 
         this.props.onDone(changed ? ret : undefined);
     }
 
-    private onRadixChangedFunc = this.onRadixChanged.bind(this);
-    private onRadixChanged() {
-        this.isBigEndian = !this.isBigEndian;
+    private onEndiannessChangeFunc = this.onEndiannessChange.bind(this);
+    private onEndiannessChange(e: any) {
+        this.endian = e.target.value;
+    }
+
+    private onFormatChangeFunc = this.onFormatChange.bind(this);
+    private onFormatChange(e: any) {
+        this.format = e.target.value;
     }
 
     render(): React.ReactNode {
         let key = 0;
         const bigLabel = 'Address: Hex/decimal constant or expression';
         return (
-            <div style={{ display: +this.state.isOpen ? '' : 'none' }}>
+            <div key={key++} style={{ display: +this.state.isOpen ? '' : 'none' }}>
                 <div
+                    key={key++}
                     className='popup'
                     id='view-settings'
                     style={{
@@ -357,7 +363,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         autofocus
                         name='expr'
                         type='text'
-                        style={{ width: '95%' }}
+                        style={{ width: '100%' }}
                         ref={this.exprRef}
                         value={this.state.settings.expr}
                     >
@@ -368,12 +374,90 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         key={key++}
                         name='displayName'
                         type='text'
-                        style={{ width: '95%' }}
+                        style={{ width: '100%' }}
                         ref={this.displayNameRef}
                         value={this.state.settings.displayName}
                     >
                         Display Name
                     </VSCodeTextField>
+                    <br key={key++}></br>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Format
+                        </label>
+                        <VSCodeDropdown
+                            key={key++}
+                            value={this.format}
+                            onChange={this.onFormatChangeFunc}
+                        >
+                            <VSCodeOption key={key++} value='1-byte'>
+                                1-Byte
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='4-byte'>
+                                4-Byte
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='8-byte'>
+                                8-Byte
+                            </VSCodeOption>
+                        </VSCodeDropdown>
+                    </div>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Endianness
+                        </label>
+                        <VSCodeDropdown
+                            key={key++}
+                            value={this.endian}
+                            onChange={this.onEndiannessChangeFunc}
+                        >
+                            <VSCodeOption key={key++} value='little'>
+                                Little
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='big'>
+                                Big
+                            </VSCodeOption>
+                        </VSCodeDropdown>
+                    </div>
+                    <div key={key++} style={{ marginTop: '10px' }}>
+                        <VSCodeDropdown key={key++} style={{ width: '25ch' }}>
+                            <VSCodeOption key={key++} value='view'>
+                                Apply To: This View
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='all-views' disabled>
+                                Apply To: All Views
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='all-views' disabled>
+                                Apply To: Workspace Settings
+                            </VSCodeOption>
+                            <VSCodeOption key={key++} value='all-views' disabled>
+                                Apply To: User Settings
+                            </VSCodeOption>
+                        </VSCodeDropdown>
+                        <VSCodeButton
+                            key={key++}
+                            appearance='primary'
+                            style={{ float: 'right', paddingRight: '1ch' }}
+                            onClick={this.onClickOkayFunc}
+                        >
+                            Ok
+                        </VSCodeButton>
+                        <VSCodeButton
+                            key={key++}
+                            appearance='secondary'
+                            style={{ float: 'right', marginRight: '10px' }}
+                            onClick={this.onClickCloseFunc}
+                        >
+                            Cancel
+                        </VSCodeButton>
+                    </div>
+                </div>
+                <div className='popup-background' onClick={this.onClickCloseFunc}></div>
+            </div>
+        );
+    }
+}
+
+/*
                     <br key={key++}></br>
                     <VSCodeRadioGroup
                         key={key++}
@@ -402,25 +486,5 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     >
                         Big Endian
                     </VSCodeCheckbox>
-                    <VSCodeButton
-                        key={key++}
-                        appearance='primary'
-                        style={{ float: 'right', margin: '3px' }}
-                        onClick={this.onClickOkayFunc}
-                    >
-                        Ok
-                    </VSCodeButton>
-                    <VSCodeButton
-                        key={key++}
-                        appearance='secondary'
-                        style={{ float: 'right', margin: '3px' }}
-                        onClick={this.onClickCloseFunc}
-                    >
-                        Cancel
-                    </VSCodeButton>
-                </div>
-                <div className='popup-background' onClick={this.onClickCloseFunc}></div>
-            </div>
-        );
-    }
-}
+
+*/
