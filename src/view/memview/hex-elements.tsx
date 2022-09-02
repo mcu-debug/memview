@@ -285,16 +285,26 @@ export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
     const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
     const classNames = 'hex-header-row';
     const addrCells: JSX.Element[] = [];
+    const bytesInRow = bytesPerCell === 1 ? 16 : 32;
+
     let key = 2;
-    for (let i = 0; i < 16; i += bytesPerCell) {
-        addrCells.push(<HexCellValueHeader key={key++} value={i} bytesPerCell={bytesPerCell} />);
+    for (let ix = 0; ix < bytesInRow; ix += bytesPerCell) {
+        addrCells.push(
+            <HexCellValueHeader key={key++} value={ix % 16} bytesPerCell={bytesPerCell} />
+        );
     }
     const decodedTextCells: JSX.Element[] = [];
     if (bytesPerCell === 1) {
-        const decodedText = 'Decoded Bytes'.padEnd(16, ' ').split('');
-        decodedText.map((v) => {
+        const tmp = 'Decoded Bytes'.padEnd(16, ' ');
+        let decodedText = '';
+        for (let ix = 0; ix < bytesInRow; ix += 16) {
+            decodedText += tmp;
+        }
+        const asList = decodedText.split('');
+        for (let ix = 0; ix < bytesInRow; ix++) {
+            const v = asList[ix];
             decodedTextCells.push(<HexCellEmptyHeader key={key++} fillChar={v} />);
-        });
+        }
     }
     return (
         <div className={classNames}>
@@ -329,6 +339,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private sessionStatus = UnknownDocId;
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
+    private bytesInRow = 16;
     private static bytePerWord: 1 | 4 | 8;
     private static byteOrder: number[] = [];
     private static isBigEndian = false;
@@ -348,8 +359,9 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                 }
             }
         }
+        this.bytesInRow = HexDataRow.bytePerWord === 1 ? 16 : 32;
         const bytes = [];
-        for (let ix = 0; ix < 16; ix++) {
+        for (let ix = 0; ix < this.bytesInRow; ix++) {
             bytes[ix] = DummyByte;
         }
         this.state = {
@@ -364,27 +376,31 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             return ret;
         }
         const len = HexDataRow.bytePerWord;
-        for (let start = 0; start < 16; start += len) {
+        for (let start = 0; start < this.bytesInRow; start += len) {
             let curV = 0n;
             let origV = 0n;
             let invalid = false;
             let changed: boolean | undefined = false;
             let stale: boolean | undefined = false;
-            for (const ix of HexDataRow.byteOrder) {
-                const byte = bytes[start + ix];
-                if (byte.cur < 0) {
-                    invalid = true;
-                    break;
+            try {
+                for (const ix of HexDataRow.byteOrder) {
+                    const byte = bytes[start + ix];
+                    if (byte.cur < 0) {
+                        invalid = true;
+                        break;
+                    }
+                    changed = changed || byte.changed;
+                    stale = stale || byte.stale;
+                    if (HexDataRow.isBigEndian) {
+                        curV = (curV << 8n) | BigInt(byte.cur & 0xff);
+                        origV = (origV << 8n) | BigInt(byte.orig & 0xff);
+                    } else {
+                        curV = (curV << 8n) | BigInt(byte.cur & 0xff);
+                        origV = (origV << 8n) | BigInt(byte.orig & 0xff);
+                    }
                 }
-                changed = changed || byte.changed;
-                stale = stale || byte.stale;
-                if (HexDataRow.isBigEndian) {
-                    curV = (curV << 8n) | BigInt(byte.cur & 0xff);
-                    origV = (origV << 8n) | BigInt(byte.orig & 0xff);
-                } else {
-                    curV = (curV << 8n) | BigInt(byte.cur & 0xff);
-                    origV = (origV << 8n) | BigInt(byte.orig & 0xff);
-                }
+            } catch (e) {
+                console.log(e);
             }
             ret.push({
                 cur: curV,
@@ -405,12 +421,21 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     private async getBytes() {
-        await DualViewDoc.getCurrentDocByte(this.props.address);
-        // Since we are async, we can get unmounted while we wait
         if (this.mountStatus) {
+            // Since we are async, we can get unmounted while we wait
             // Get the first byte of the row. The rest should be in the same page
             // so do it the fast way, since the bytes should have been loaded by now
-            const bytes = DualViewDoc.getRowUnsafe(this.props.address);
+            let bytes: IMemValue[] = [];
+            const p = [];
+            for (let row = 1; row <= this.bytesInRow / 16; row++) {
+                const addr = this.props.address + BigInt(16 * row);
+                p.push(DualViewDoc.getCurrentDocByte(addr));
+            }
+            await Promise.all(p);
+            for (let row = 1; row <= this.bytesInRow / 16; row++) {
+                const addr = this.props.address + BigInt(16 * row);
+                bytes = bytes.concat(DualViewDoc.getRowUnsafe(addr));
+            }
             const words = this.convertToWords(bytes);
             this.setState({ bytes: bytes, words: words });
         }
@@ -455,7 +480,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         const values = [];
         const chars = [];
         let key = 1;
-        for (let ix = 0; ix < 16 / HexDataRow.bytePerWord; ix++) {
+        for (let ix = 0; ix < this.bytesInRow / HexDataRow.bytePerWord; ix++) {
             const addr = this.props.address + BigInt(ix * HexDataRow.bytePerWord);
             values.push(
                 <HexCellValue

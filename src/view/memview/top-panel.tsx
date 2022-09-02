@@ -15,6 +15,7 @@ import {
     ICmdButtonClick,
     ICmdSettingsChanged,
     IModifiableProps,
+    IWebviewDocInfo,
     RowFormatType,
     UnknownDocId
 } from './shared';

@@ -16,6 +16,7 @@
         "codicons",
         "cppdbg",
         "cspy",
+        "Debouncer",
         "esbuild",
         "hanlders",
         "Memview",

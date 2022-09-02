@@ -92,6 +92,8 @@ export interface IWebviewDocInfo {
     sessionStatus: string;
     isModified: boolean;
     isCurrent: boolean;
+    baseAddress: bigint;
+    startAddress: bigint;
 }
 
 export interface ICmdSettingsChanged extends ICmdBase {

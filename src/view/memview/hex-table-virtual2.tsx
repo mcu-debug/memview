@@ -54,8 +54,7 @@ function setVscodeToolbarHeight(v: number) {
 
 const estimatedRowHeight = getVscodeRowHeight();
 const estimatedToolbarHeight = getVscodeToolbarHeight();
-const maxNumBytes = 1024 * 1024;
-const maxNumRows = maxNumBytes / 16;
+const maxNumBytes = 4 * 1024 * 1024;
 
 export interface IHexTableVirtual {
     onChange?: OnCellChangeFunc;
@@ -66,20 +65,27 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     private renderRowFunc = this.renderRow.bind(this);
     private onScrollFunc = this.onScroll.bind(this);
     private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
+    private maxNumRows: number;
+    private bytesPerRow: number;
+    private listElementRef: any;
 
     constructor(public props: IHexTableVirtual) {
         super(props);
 
+        const doc = DualViewDoc.currentDoc;
         this.state = {
             items: [],
             toolbarHeight: estimatedToolbarHeight,
             rowHeight: estimatedRowHeight,
-            docId: DualViewDoc.currentDoc?.docId || UnknownDocId,
-            sessionId: DualViewDoc.currentDoc?.sessionId || UnknownDocId,
-            sessionStatus: DualViewDoc.currentDoc?.sessionStatus || UnknownDocId,
-            baseAddress: DualViewDoc.currentDoc?.baseAddress ?? 0n,
+            docId: doc?.docId || UnknownDocId,
+            sessionId: doc?.sessionId || UnknownDocId,
+            sessionStatus: doc?.sessionStatus || UnknownDocId,
+            baseAddress: doc?.baseAddress ?? 0n,
             scrollTop: getDocStateScrollTop()
         };
+        console.log('HexTableVirtual2 ctor()', this.state);
+        this.bytesPerRow = doc ? (doc.format === '1-byte' ? 16 : 32) : 16;
+        this.maxNumRows = maxNumBytes * this.bytesPerRow;
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
     }
 
@@ -139,7 +145,18 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         }
         try {
             await this.loadInitial();
-        } catch (e) {}
+            this.restoreScroll();
+        } catch (e) {
+            // eslint-disable-next-line no-debugger
+            debugger;
+            console.log(e);
+        }
+    }
+
+    restoreScroll() {
+        if (this.listElementRef) {
+            this.listElementRef.scrollTo(this.state.scrollTop);
+        }
     }
 
     private async loadInitial() {
@@ -148,17 +165,17 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         await this.loadMore(top, top + want);
     }
 
-    private scrollSettingTimeout: NodeJS.Timeout | undefined;
+    private scrollSettingDebouncer: NodeJS.Timeout | undefined;
     onScroll(args: ListOnScrollProps) {
-        // We just remember the last top position to use next time we are mounted
-        this.setState({ scrollTop: args.scrollOffset });
-
-        if (this.scrollSettingTimeout) {
-            clearTimeout(this.scrollSettingTimeout);
+        if (this.scrollSettingDebouncer) {
+            clearTimeout(this.scrollSettingDebouncer);
         }
-        this.scrollSettingTimeout = setTimeout(async () => {
-            this.scrollSettingTimeout = undefined;
-            await setDocStateScrollTop(this.state.scrollTop);
+        this.scrollSettingDebouncer = setTimeout(async () => {
+            this.scrollSettingDebouncer = undefined;
+            console.log('onScroll', args);
+            // We just remember the last top position to use next time we are mounted
+            this.setState({ scrollTop: args.scrollOffset });
+            await setDocStateScrollTop(args.scrollOffset);
         }, 250);
     }
 
@@ -186,7 +203,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         let changed = false;
         const endAddr = this.state.baseAddress + BigInt(maxNumBytes);
         for (let ix = items.length; ix <= stopIndex; ix++) {
-            const addr = this.state.baseAddress + BigInt(ix * 16);
+            const addr = this.state.baseAddress + BigInt(ix * this.bytesPerRow);
             if (addr >= endAddr) {
                 break;
             }
@@ -242,12 +259,17 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         return ret;
     }
 
+    private refWrapper(ref: (ref: any) => void, elt: any) {
+        this.listElementRef = elt;
+        ref(elt);
+    }
+
     render() {
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
         const heightCalc = window.innerHeight - this.state.rowHeight - this.state.toolbarHeight - 2;
         console.log(
-            `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight}`
+            `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight} scrollTop=${this.state.scrollTop}`
         );
         return (
             <div className='container' style={{ overflowX: 'scroll' }}>
@@ -255,20 +277,22 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                 <InfiniteLoader
                     isItemLoaded={this.isItemLoadedFunc}
                     loadMoreItems={this.loadMoreFunc}
-                    itemCount={maxNumRows}
+                    itemCount={this.maxNumRows}
                 >
                     {({ onItemsRendered, ref }) => (
                         <AutoSizer disableHeight>
                             {({ width }) => (
                                 <List
-                                    ref={ref}
+                                    ref={this.refWrapper.bind(this, ref)}
                                     onItemsRendered={onItemsRendered}
                                     height={heightCalc}
                                     width={width}
                                     overscanCount={30}
                                     itemCount={this.state.items.length}
                                     itemSize={this.state.rowHeight}
-                                    initialScrollOffset={this.state.scrollTop}
+                                    // setting it to this.state.scrollTop does not work because the upper level components
+                                    // have taken it over and override our wish. We set it from restoreScrollTop
+                                    initialScrollOffset={0}
                                     onScroll={this.onScrollFunc}
                                 >
                                     {this.renderRowFunc}

@@ -116,7 +116,8 @@ export class DualViewDoc {
         this.memory = info.memory
             ? MemPages.restoreSerializable(info.memory, this)
             : new MemPages(this);
-        this.clientState = info.clientState;
+        console.log(info.clientState);
+        this.clientState = info.clientState || {};
         DualViewDoc.addDocument(this, !!info.isCurrentDoc);
     }
 
@@ -470,6 +471,8 @@ export class DualViewDoc {
                 sessionId: doc.sessionId,
                 docId: doc.docId,
                 sessionStatus: doc.sessionStatus,
+                baseAddress: doc.baseAddress,
+                startAddress: doc.startAddress,
                 isModified: doc.isModified(),
                 isCurrent: doc === DualViewDoc.currentDoc
             };
