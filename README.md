@@ -64,6 +64,8 @@ The interface for options is as follows
 
 ```typescript
 /**
+ * Proposed API
+ *
  * It is best to add a new memory view when a debug session is active and in stopped
  * status. Otherwise, there has to be a lot of guessing and we may not always get it right
  * or get it right immediately.
@@ -73,6 +75,12 @@ The interface for options is as follows
  * if the session name changes or workspace folder changes.
  */
 export interface MemviewUriOptions {
+    /**
+     * `memoryReference` is what a debug adapter provides. It is an opaque string representing a location in memory.
+     *  If this exists, we use it if the there is no `expr`, or if you have an `expr` as a fallback memory location.
+     * This is generally provided by automated tools and not something to be manually entered.
+     */
+    memoryReference?: string;
     /**
      * `expr` can be a constant memory address or an expression resulting in an address by debugger using evaluate().
      * URI path is used if no expr is specified
@@ -86,7 +94,7 @@ export interface MemviewUriOptions {
      */
     sessionId?: string | 'current'; // Undefined also means 'current' if there is an active session
 
-    /** If not supplied, use expr or the URI path */
+    /** If not supplied, use `expr` or `memoryReference` or the URI path */
     displayName?: string;
 
     /**
