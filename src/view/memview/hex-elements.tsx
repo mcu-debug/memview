@@ -219,8 +219,8 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     }
 }
 
-export const HexCellAddress: React.FC<{ address: bigint }> = ({ address }) => {
-    const classNames = 'hex-cell hex-cell-address';
+export const HexCellAddress: React.FC<{ address: bigint; cls?: string }> = ({ address, cls }) => {
+    const classNames = 'hex-cell hex-cell-address ' + cls;
     // const id = `hex-cell-address-${address}`;
     const valueStr = address.toString(16).padStart(16, '0').padEnd(18, ' ');
     return <span className={classNames}>{valueStr}</span>;
@@ -308,11 +308,10 @@ export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
     }
     return (
         <div className={classNames}>
-            <HexCellEmptyHeader
-                key={key++}
-                length={18}
-                fillChar='.'
-                cls='hex-cell-address hex-cell-invisible'
+            <HexCellAddress
+                key={101}
+                cls='header-cell-address'
+                address={DualViewDoc.currentDoc?.startAddress ?? 0n}
             />
             {addrCells}
             <HexCellEmpty key={100} length={1} fillChar='.' cls='hex-cell-invisible' />

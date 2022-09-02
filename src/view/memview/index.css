@@ -95,6 +95,11 @@ body {
     width: 18ch;
 }
 
+.header-cell-address {
+    color: var(--vscode-symbolIcon-classForeground);
+    font-weight: bold;
+}
+
 .hex-cell-invisible {
     visibility: hidden;
 }
