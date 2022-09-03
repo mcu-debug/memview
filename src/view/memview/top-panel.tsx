@@ -456,35 +456,3 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         );
     }
 }
-
-/*
-                    <br key={key++}></br>
-                    <VSCodeRadioGroup
-                        key={key++}
-                        ref={this.formatRef}
-                        orientation='horizontal'
-                        value={this.state.settings.format}
-                    >
-                        <span key={key++} className='radio-label'>
-                            Format
-                        </span>
-                        <VSCodeRadio key={key++} value='1-byte'>
-                            1-byte
-                        </VSCodeRadio>
-                        <VSCodeRadio key={key++} value='4-byte'>
-                            4-byte
-                        </VSCodeRadio>
-                        <VSCodeRadio key={key++} value='8-byte'>
-                            8-byte
-                        </VSCodeRadio>
-                    </VSCodeRadioGroup>
-                    <VSCodeCheckbox
-                        checked={this.isBigEndian}
-                        ref={this.endianRef}
-                        key={key++}
-                        onChange={this.onRadixChangedFunc}
-                    >
-                        Big Endian
-                    </VSCodeCheckbox>
-
-*/

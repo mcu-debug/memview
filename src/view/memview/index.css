@@ -125,6 +125,8 @@ body {
     align-items: left;
     padding: 6px;
     z-index: 1000;
+    border-width: 1px;
+    border-color: var(--vscode-sideBar-border);
 }
 
 .popup-background {

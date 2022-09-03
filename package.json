@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "publisher": "haneefdm",
     "repository": {
         "type": "git",
@@ -28,7 +28,8 @@
         "cppdbg",
         "embedded",
         "memory",
-        "cortex"
+        "cortex",
+        "hex"
     ],
     "activationEvents": [
         "onDebugResolve:cortex-debug",

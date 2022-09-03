@@ -148,8 +148,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             this.restoreScroll();
         } catch (e) {
             // eslint-disable-next-line no-debugger
-            debugger;
-            console.log(e);
+            // debugger;
+            console.error(e);
         }
     }
 
@@ -172,7 +172,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         }
         this.scrollSettingDebouncer = setTimeout(async () => {
             this.scrollSettingDebouncer = undefined;
-            console.log('onScroll', args);
+            // console.log('onScroll', args);
             // We just remember the last top position to use next time we are mounted
             this.setState({ scrollTop: args.scrollOffset });
             await setDocStateScrollTop(args.scrollOffset);
@@ -305,36 +305,3 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         );
     }
 }
-
-/*
-html {
-   height: 100%;
-}
-
-body {
-   background: #633;
-   color: #fff;
-   display: flex;
-   min-height: 100%;
-}
-
-#root {
-   flex: 1;
-}
-
-.container {
-   display: flex;
-   flex: 1;
-   flex-direction: column;
-   width: 98%;
-}
-
-.table-row-xxx {
-   border-top: 1px solid rgba(255, 255, 255, .2);
-}
-
-.ReactVirtualized__Table__headerRow {
-   border: 0;
-   color: #ff0;
-}
-*/
