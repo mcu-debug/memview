@@ -22,8 +22,8 @@ This was originally conceived as part of the [Cortex-Debug](https://github.com/M
 -   Coming soon: memory editing. You can edit now but there is capability to commit changes to program memory.
 -   Coming soon: Ability to host the window either in the 'Panel' area (alongside Debug Console) or in the editor area.
 
-Following customizations exist for a memory view
-![vew-properties](./resources/vew-props.png)
+Following customizations exist for a memory view<br>
+<img src="./resources/vew-props.png" width="400">
 
 We would like to eventually launch memory views from the Variables and Watch windows. But this will require some cooperation from core VSCode.
 
