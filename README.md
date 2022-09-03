@@ -12,6 +12,15 @@ Our goal is to provide a good memory viewer, editing memory is lower in priority
 
 This was originally conceived as part of the [Cortex-Debug](https://github.com/Marus/cortex-debug) extension. But I decided to make it a stand-alone extension so it can be useful for other debuggers. The design thoughts and goals are [documented here](https://github.com/Marus/cortex-debug/wiki/Memory-Viewer)
 
+- Infinte scroll caapable. Currently, artificially limited to 4MB and this may change.
+  - Very little data is fetched depening on what is being viewed and more is loaded as you scroll.
+- 1/4/8 byte views. Decoded bytes are only shown in 1-byte mode.
+- Persistent views that survive multiple debug sessions and VSCode restarts.
+- One panel hosts multiple views that you can switch beteen. This was a deliberate choice.
+ - Separate views can interfere with the performance of the debug session single steppint because of too much traffic
+- Coming soon: memory editing. You can edit now but there is capability to commit changes to program memory.
+- Coming soon: Ability to host the window either in the 'Panel' area (alongside Debug Colsole) or in the editor area.
+
 We would like to eventually launch memory views from the Variables and Watch windows. But this will require some cooperation from core VSCode.
 
 ## Usage (Manually within VSCode)
