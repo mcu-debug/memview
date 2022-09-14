@@ -158,6 +158,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         const docItems = [];
         let count = 0;
         let status = 'No status';
+        let enableProps = false;
         for (const doc of DualViewDoc.getBasicDocumentsList()) {
             docItems.push(
                 <VSCodeOption key={count} selected={doc.isCurrent} value={doc.docId}>
@@ -165,6 +166,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 </VSCodeOption>
             );
             status = doc.isCurrent ? doc.sessionStatus : status;
+            enableProps = enableProps || doc.docId !== UnknownDocId;
             count++;
         }
         const isModified = DualViewDoc.currentDoc?.isModified;
@@ -196,7 +198,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                 <VSCodeButton
                     key={key++}
                     appearance='icon'
-                    title='Edit memory view properties. Coming soon'
+                    title='Edit memory view properties'
+                    disabled={!enableProps}
                     onClick={this.onClickEditPropFunc}
                 >
                     <span className='codicon codicon-edit'></span>

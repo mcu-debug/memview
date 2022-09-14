@@ -579,7 +579,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
         return new Promise<string>((resolve, reject) => {
             const arg: DebugProtocol.EvaluateArguments = {
-                frameId: undefined,
+                // frameId: undefined,
                 expression: expr,
                 context: 'hover'
             };
