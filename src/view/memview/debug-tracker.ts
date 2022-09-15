@@ -17,6 +17,7 @@ export interface ITrackedDebugSession {
     canWriteMemory: boolean | undefined;
     canReadMemory: boolean | undefined;
     status: DebugSessionStatus;
+    lastFrameId: number | undefined;
 }
 
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
@@ -35,7 +36,8 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                 session: session,
                 canWriteMemory: undefined,
                 canReadMemory: undefined,
-                status: 'unknown'
+                status: 'unknown',
+                lastFrameId: undefined
             };
             DebuggerTracker.allSessionsById[session.id] = props;
             DebuggerTracker.allSessionsByConfigName[session.name] = props;
@@ -172,6 +174,8 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
             if (typeof frameId === 'number') {
                 arg.frameId = frameId;
             }
+
+            props.lastFrameId = frameId;
             DebuggerTracker.eventEmitter.emit(status, arg);
             DebuggerTracker.eventEmitter.emit('any', arg);
         }

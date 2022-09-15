@@ -4,13 +4,13 @@
     "preview": true,
     "description": "Provide memory views for debuggers",
     "version": "0.0.9",
-    "publisher": "haneefdm",
+    "publisher": "mcu-debug",
     "repository": {
         "type": "git",
-        "url": "https://github.com/haneefdm/memview"
+        "url": "https://github.com/mcu-debug/memview"
     },
     "bugs": {
-        "url": "https://github.com/haneefdm/memview/issues"
+        "url": "https://github.com/mcu-debug/memview/issues"
     },
     "engines": {
         "vscode": "^1.69.0"
@@ -38,7 +38,7 @@
         "onCommand:memview.hello",
         "onCommand:memview.toggleMemoryView",
         "onCommand:memview.addMemoryView",
-        "onWebviewPanel:memview.memView",
+        "onWebviewPanel:memview.memoryView",
         "onUri"
     ],
     "main": "./dist/extension.js",
@@ -62,11 +62,11 @@
         ],
         "customEditors": [
             {
-                "viewType": "memView.memview",
+                "viewType": "memView.memoryView",
                 "displayName": "Memory Viewer",
                 "selector": [
                     {
-                        "filenamePattern": "*.memview"
+                        "filenamePattern": "*.memoryView"
                     }
                 ],
                 "priority": "option"
@@ -84,7 +84,7 @@
         "views": {
             "memview": [
                 {
-                    "id": "memview.memView",
+                    "id": "memview.memoryView",
                     "type": "webview",
                     "name": "MEMORY",
                     "when": "memview:showMemoryPanel && memview:memoryPanelLocation == panel"
@@ -143,7 +143,6 @@
         "vscode-webview-tools": "^0.1.1"
     },
     "dependencies": {
-        "@popperjs/core": "^2.11.6",
         "@vscode/codicons": "^0.0.32",
         "@vscode/debugprotocol": "^1.56.1",
         "@vscode/extension-telemetry": "0.5.2",

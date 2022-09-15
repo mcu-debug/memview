@@ -96,7 +96,7 @@ export class MemviewDocument implements vscode.CustomDocument {
 }
 
 export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
-    private static readonly viewType = 'memView.memview';
+    private static readonly viewType = 'memView.memoryView';
     public static register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
             vscode.window.registerCustomEditorProvider(
@@ -205,7 +205,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
 
 export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.UriHandler {
     private static context: vscode.ExtensionContext;
-    private static readonly viewType = 'memview.memView';
+    private static readonly viewType = 'memview.memoryView';
     private static readonly stateVersion = 1;
     private static readonly stateKeyName = 'documents';
     private static Provider: MemViewPanelProvider;
@@ -221,7 +221,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     retainContextWhenHidden: true
                 }
             }),
-            vscode.window.registerUriHandler(MemViewPanelProvider.Provider)
+            // vscode.window.registerUriHandler(MemViewPanelProvider.Provider)
         );
         DualViewDoc.init(new DebuggerIF());
         try {
@@ -578,11 +578,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             return Promise.resolve(expr);
         }
         return new Promise<string>((resolve, reject) => {
+            const tmp = DebuggerTracker.getSessionById(session.id);
             const arg: DebugProtocol.EvaluateArguments = {
-                // frameId: undefined,
                 expression: expr,
                 context: 'hover'
             };
+            if (tmp?.lastFrameId !== undefined) {
+                arg.frameId = tmp.lastFrameId;
+            }
             session.customRequest('evaluate', arg).then((result) => {
                 if (result.memoryReference) {
                     resolve(result.memoryReference);
