@@ -47,8 +47,8 @@ export class MemViewExtension {
     static Extension: MemViewExtension;
     private tracker: DebugTrackerFactory;
     private toggleMemoryView() {
-        const config = vscode.workspace.getConfiguration('memview', null);
-        const isEnabled = !config.get('showMemoryPanel', false);
+        const config = vscode.workspace.getConfiguration('memory-view', null);
+        const isEnabled = !config.get('showMemoryPanel', true);
         const panelLocation = config.get('memoryViewLocation', 'panel');
         config.update('showMemoryPanel', isEnabled);
         const status = isEnabled ? `visible in the '${panelLocation}' area` : 'hidden';
@@ -56,8 +56,8 @@ export class MemViewExtension {
     }
 
     static async enableMemoryView() {
-        const config = vscode.workspace.getConfiguration('memview', null);
-        const isEnabled = config.get('showMemoryPanel', false);
+        const config = vscode.workspace.getConfiguration('memory-view', null);
+        const isEnabled = config.get('showMemoryPanel', true);
         if (!isEnabled) {
             await config.update('showMemoryPanel', true);
             MemViewExtension.Extension.setContexts();
@@ -69,11 +69,11 @@ export class MemViewExtension {
     }
 
     private setContexts() {
-        const config = vscode.workspace.getConfiguration('memview', null);
-        const isEnabled = config.get('showMemoryPanel', false);
+        const config = vscode.workspace.getConfiguration('memory-view', null);
+        const isEnabled = config.get('showMemoryPanel', true);
         const panelLocation = config.get('memoryViewLocation', 'panel');
-        vscode.commands.executeCommand('setContext', 'memview:showMemoryPanel', isEnabled);
-        vscode.commands.executeCommand('setContext', 'memview:memoryPanelLocation', panelLocation);
+        vscode.commands.executeCommand('setContext', 'memory-view:showMemoryPanel', isEnabled);
+        vscode.commands.executeCommand('setContext', 'memory-view:memoryPanelLocation', panelLocation);
     }
 
     onDeactivate() {
@@ -89,8 +89,8 @@ export class MemViewExtension {
         this.setContexts();
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('memview.toggleMemoryView', this.toggleMemoryView.bind(this)),
-            vscode.commands.registerCommand('memview.hello', () => {
+            vscode.commands.registerCommand('memory-view.toggleMemoryView', this.toggleMemoryView.bind(this)),
+            vscode.commands.registerCommand('memory-view.hello', () => {
                 const options: MemviewUriOptions = {
                     expr: '&buf'
                 };
@@ -110,7 +110,7 @@ export class MemViewExtension {
                     console.error(e);
                 });
             }),
-            vscode.commands.registerCommand('memview.addMemoryView', () => {
+            vscode.commands.registerCommand('memory-view.addMemoryView', () => {
                 if (this.tracker.isActive()) {
                     MemViewPanelProvider.newMemoryView();
                 } else {

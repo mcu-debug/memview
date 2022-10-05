@@ -97,7 +97,7 @@ export class MemviewDocument implements vscode.CustomDocument {
 }
 
 export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
-    private static readonly viewType = 'memview.memoryView';
+    private static readonly viewType = 'memory-view.memoryView';
     public static register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
             vscode.window.registerCustomEditorProvider(
@@ -206,7 +206,7 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
 
 export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.UriHandler {
     private static context: vscode.ExtensionContext;
-    private static readonly viewType = 'memview.memoryView';
+    private static readonly viewType = 'memory-view.memoryView';
     private static readonly stateVersion = 1;
     private static readonly stateKeyName = 'documents';
     private static Provider: MemViewPanelProvider;

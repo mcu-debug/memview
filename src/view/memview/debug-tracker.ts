@@ -144,13 +144,13 @@ export class DebugTrackerFactory {
     }
 
     private settingsChanged(e: vscode.ConfigurationChangeEvent) {
-        if (e.affectsConfiguration('memview.trackDebuggers')) {
+        if (e.affectsConfiguration('memory-view.trackDebuggers')) {
             this.updateTrackedDebuggersFromSettings();
         }
     }
 
     private updateTrackedDebuggersFromSettings() {
-        const config = vscode.workspace.getConfiguration('memview', null);
+        const config = vscode.workspace.getConfiguration('memory-view', null);
         const prop = config.get('trackDebuggers', []);
         if (prop && Array.isArray(prop)) {
             for (let ix = 0; ix < prop.length; ix++) {
@@ -285,7 +285,7 @@ function appendMsgToTmpDir(str: string) {
     try {
         // eslint-disable-next-line no-constant-condition
         if (false) {
-            const fname = path.join(os.tmpdir(), 'memview-dbg-trace.txt');
+            const fname = path.join(os.tmpdir(), 'memory-view-dbg-trace.txt');
             // console.log(`Write ${str} to file ${fname}`);
             if (!str.endsWith('\n')) {
                 str = str + '\n';
