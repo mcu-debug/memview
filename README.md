@@ -1,6 +1,6 @@
 # memview
 
-https://marketplace.visualstudio.com/items?itemName=mcu-debug.memview is available as a preview. Please read the following first though.
+https://marketplace.visualstudio.com/items?itemName=mcu-debug.memory-view is available as a preview. Please read the following first though.
 
 This is a memory viewer extension specially built to work with debuggers. It can be used with any debugger that supports memory reads (and optional writes). Currently `cppdbg`, `cortex-debug` and `cspy` are the debuggers supported. This extension is more suitable for low level programmers or embedded developers. The debugger has to support the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/). This protocol specifies how to format/make requests and responses. However it does not say what happens when a request fails so there may be issues in failure conditions -- we try our best to recover.
 
@@ -44,7 +44,7 @@ Your views are preserved across restarts of VSCode window. They are saved on a w
 
 ## Usage (Manually from a browser)
 
-You can enter URL that of the form vscode://mch-debug.memview/ADDRESS-OR-EXPRESSION to open a new view (best done when the debugger is in paused state). For instance entering vscode://mcu-debug.memview/0x20000670 will open a view for address 0x20000670. All the options mentioned in the section below also apply
+You can enter URL that of the form vscode://mch-debug.memory-view/ADDRESS-OR-EXPRESSION to open a new view (best done when the debugger is in paused state). For instance entering vscode://mcu-debug.memory-view/0x20000670 will open a view for address 0x20000670. All the options mentioned in the section below also apply
 
 ## Usage (programmatically by another extension)
 
@@ -58,7 +58,7 @@ const options: MemviewUriOptions = {
 };
 const uri = vscode.Uri.from({
     scheme: vscode.env.uriScheme,
-    authority: 'mcu-debug.memview',
+    authority: 'mcu-debug.memory-view',
     path: '/' + encodeURIComponent('&buf'), // Use any expression or hex or decimal constant here
     query: querystring.stringify(options as any)
 });
