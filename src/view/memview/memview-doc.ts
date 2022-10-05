@@ -9,8 +9,9 @@ import {
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
     ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged
 } from './shared';
-import { DebuggerTracker } from './debug-tracker';
+import { DebuggerTrackerLocal } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
+import { DebugSessionStatus } from 'debug-tracker-vscode';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -241,7 +242,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
 
     constructor(public context: vscode.ExtensionContext) {
         MemViewPanelProvider.context = context;
-        DebuggerTracker.eventEmitter.on('any', this.debuggerStatusChanged.bind(this));
+        DebuggerTrackerLocal.eventEmitter.on('any', this.debuggerStatusChanged.bind(this));
     }
 
     handleUri(uri: vscode.Uri): vscode.ProviderResult<void> {
@@ -269,7 +270,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         const optSessionId = cvt(options.sessionId);
         const useCurrent = (!optSessionId || optSessionId === 'current');
         const sessionId = useCurrent && session ? session.id : optSessionId || session?.id || uuid();
-        const sessionInfo = DebuggerTracker.getSessionById(sessionId);
+        const sessionInfo = DebuggerTrackerLocal.getSessionById(sessionId);
         if (sessionInfo) {
             session = sessionInfo.session;
         }
@@ -290,7 +291,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             baseAddressStale: true,
             isCurrentDoc: true,
         };
-        if (sessionInfo && sessionInfo.status === 'stopped') {
+        if (sessionInfo && sessionInfo.status === DebugSessionStatus.Stopped) {
             MemViewPanelProvider.getExprResult(sessionInfo.session, props.expr).then((addr) => {
                 props.baseAddressStale = false;
                 props.startAddress = addr;
@@ -484,7 +485,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 docId: ''
             };
             this.postNotice(msg, arg);
-            if (arg.status === 'terminated') {
+            if (arg.status === DebugSessionStatus.Terminated) {
                 MemViewPanelProvider.saveState();
             }
         }
@@ -492,7 +493,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
 
     private sendAllDebuggerSessions(msg: ICmdBase) {
         if (this.webviewView?.visible) {
-            const allSessions = DebuggerTracker.getCurrentSessionsSerializable();
+            const allSessions = DebuggerTrackerLocal.getCurrentSessionsSerializable();
             this.postResponse(msg, allSessions);
         }
     }
@@ -523,7 +524,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     static addMemoryView(session: vscode.DebugSession, expr: string) {
         expr = expr.trim();
         MemViewPanelProvider.getExprResult(session, expr).then((addr) => {
-            const sessonInfo = DebuggerTracker.getSessionById(session.id);
+            const sessonInfo = DebuggerTrackerLocal.getSessionById(session.id);
             const props: IWebviewDocXfer = {
                 docId: uuid(),
                 sessionId: session.id,
@@ -552,7 +553,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.showErrorMessage('There is no active debug session');
             return;
         }
-        const ret = DebuggerTracker.isValidSessionForMemory(session.id);
+        const ret = DebuggerTrackerLocal.isValidSessionForMemory(session.id);
         if (ret !== true) {
             vscode.window.showErrorMessage(`${ret}. Cannot add a memory view`);
             return;
@@ -578,7 +579,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             return Promise.resolve(expr);
         }
         return new Promise<string>((resolve, reject) => {
-            const tmp = DebuggerTracker.getSessionById(session.id);
+            const tmp = DebuggerTrackerLocal.getSessionById(session.id);
             const arg: DebugProtocol.EvaluateArguments = {
                 expression: expr,
                 context: 'hover'
@@ -655,8 +656,8 @@ class mockDebugger implements IMemoryInterfaceCommands {
 
 class DebuggerIF implements IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
-        const session = DebuggerTracker.getSessionById(arg.sessionId);
-        if (!session || (session.status !== 'stopped')) {
+        const session = DebuggerTrackerLocal.getSessionById(arg.sessionId);
+        if (!session || (session.status !== DebugSessionStatus.Stopped)) {
             return Promise.resolve(arg.def);
         }
         return MemViewPanelProvider.getExprResult(session.session, arg.expr);
@@ -667,8 +668,8 @@ class DebuggerIF implements IMemoryInterfaceCommands {
             count: arg.count
         };
         return new Promise<Uint8Array>((resolve) => {
-            const session = DebuggerTracker.getSessionById(arg.sessionId);
-            if (!session || (session.status !== 'stopped')) {
+            const session = DebuggerTrackerLocal.getSessionById(arg.sessionId);
+            if (!session || (session.status !== DebugSessionStatus.Stopped)) {
                 return resolve(new Uint8Array(0));
             }
             session.session.customRequest('readMemory', memArg).then((result) => {

@@ -45,6 +45,7 @@ export interface MemviewUriOptions {
 
 export class MemViewExtension {
     static Extension: MemViewExtension;
+    private tracker: DebugTrackerFactory;
     private toggleMemoryView() {
         const config = vscode.workspace.getConfiguration('memview', null);
         const isEnabled = !config.get('showMemoryPanel', false);
@@ -81,23 +82,15 @@ export class MemViewExtension {
 
     constructor(public context: vscode.ExtensionContext) {
         MemViewExtension.Extension = this;
-        try {
-            DebugTrackerFactory.register(context);
-            // MemviewDocumentProvider.register(context);
-            MemViewPanelProvider.register(context);
-            // const p = path.join(context.extensionPath, 'package.json');
-            // MemViewPanelProvider.doTest(p);
-        }
-        catch (e) {
-            console.log('Memview extension could not start', e);
-        }
+        this.tracker = DebugTrackerFactory.register(context);
+        // MemviewDocumentProvider.register(context);
+        MemViewPanelProvider.register(context);
 
         this.setContexts();
 
         context.subscriptions.push(
             vscode.commands.registerCommand('memview.toggleMemoryView', this.toggleMemoryView.bind(this)),
             vscode.commands.registerCommand('memview.hello', () => {
-                vscode.window.showInformationMessage('Hello from memview extension');
                 const options: MemviewUriOptions = {
                     expr: '&buf'
                 };
@@ -117,7 +110,13 @@ export class MemViewExtension {
                     console.error(e);
                 });
             }),
-            vscode.commands.registerCommand('memview.addMemoryView', MemViewPanelProvider.newMemoryView),
+            vscode.commands.registerCommand('memview.addMemoryView', () => {
+                if (this.tracker.isActive()) {
+                    MemViewPanelProvider.newMemoryView();
+                } else {
+                    vscode.window.showErrorMessage('Cannot execute this command as the debug-tracker-vscode extension did not connect properly');
+                }
+            }),
             vscode.workspace.onDidChangeConfiguration(this.onSettingsChanged.bind(this))
         );
     }

@@ -13,3 +13,4 @@ vsc-extension-quickstart.md
 **/*.ts
 
 !node_modules/@vscode/codicons/dist
+!node_modules/debug-tracker-vscode
