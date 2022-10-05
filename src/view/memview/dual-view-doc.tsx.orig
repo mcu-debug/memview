@@ -20,7 +20,6 @@ import {
     ICmdSetByte,
     IWebviewDocInfo,
     ModifiedXferMap,
-    DebugSessionStatusSimple,
     ICmdClientState,
     ICmdGetStartAddress,
     UnknownDocId,
@@ -28,6 +27,7 @@ import {
     RowFormatType,
     IModifiableProps
 } from './shared';
+import { DebugSessionStatus } from 'debug-tracker-vscode';
 import { hexFmt64 } from './utils';
 
 export enum DualViewDocGlobalEventType {
@@ -208,7 +208,7 @@ export class DualViewDoc {
 
     public static debuggerStatusChanged(
         sessionId: string,
-        status: DebugSessionStatusSimple,
+        status: DebugSessionStatus,
         sessionName: string,
         wsFolder: string
     ) {
@@ -216,7 +216,8 @@ export class DualViewDoc {
             const oldStatus = doc.sessionStatus;
             if (doc.sessionId !== sessionId) {
                 if (
-                    (status === 'started' || status === 'stopped') &&
+                    (status === DebugSessionStatus.Started ||
+                        status === DebugSessionStatus.Stopped) &&
                     (sessionName === doc.sessionName || !doc.sessionName) &&
                     (doc.wsFolder === wsFolder || !doc.wsFolder)
                 ) {
@@ -229,17 +230,17 @@ export class DualViewDoc {
                     doc.wsFolder = wsFolder;
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                     doc.memory.deleteHistory();
-                    if (status === 'stopped') {
+                    if (status === DebugSessionStatus.Stopped) {
                         doc.markAsStale();
                         doc.sessionStatus = DocDebuggerStatus.Stopped;
                     }
                 }
-            } else if (status !== 'initializing') {
-                doc.isReady = status === 'stopped';
-                if (status === 'stopped') {
+            } else if (status !== DebugSessionStatus.Initializing) {
+                doc.isReady = status === DebugSessionStatus.Stopped;
+                if (status === DebugSessionStatus.Stopped) {
                     doc.markAsStale();
                     doc.sessionStatus = DocDebuggerStatus.Stopped;
-                } else if (status === 'terminated') {
+                } else if (status === DebugSessionStatus.Terminated) {
                     doc.sessionStatus = DocDebuggerStatus.Default;
                     doc.memory.deleteHistory();
                 } else {

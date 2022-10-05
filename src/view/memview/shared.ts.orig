@@ -1,4 +1,7 @@
 import { IMemPages } from './dual-view-doc';
+import {
+    DebugSessionStatus,
+} from 'debug-tracker-vscode';
 
 export const UnknownDocId = 'Unknown';
 
@@ -135,8 +138,6 @@ export interface IMemoryInterfaceCommands {
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
 }
 
-export type DebugSessionStatusSimple = 'initializing' | 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';
-
 export interface ITrackedDebugSessionXfer {
     sessionId: string;
     sessionName: string;
@@ -144,6 +145,6 @@ export interface ITrackedDebugSessionXfer {
     wsFolder: string;
     canWriteMemory: boolean;
     canReadMemory: boolean;
-    status: DebugSessionStatusSimple;
+    status: DebugSessionStatus;
     frameId?: number;
 }
