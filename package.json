@@ -1,5 +1,5 @@
 {
-    "name": "memview",
+    "name": "memory-view",
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",

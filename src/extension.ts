@@ -99,7 +99,7 @@ export class MemViewExtension {
                 }
                 const uri = vscode.Uri.from({
                     scheme: vscode.env.uriScheme,
-                    authority: 'mcu-debug.memview',
+                    authority: 'mcu-debug.memory-view',
                     path: '/' + encodeURIComponent('&buf'),
                     query: querystring.stringify(options as any)
                 });
