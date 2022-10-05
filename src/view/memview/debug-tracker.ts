@@ -101,7 +101,7 @@ export class DebuggerTrackerLocal {
     }
 
     public static setStatus(s: vscode.DebugSession, status: DebugSessionStatus, frameId?: number) {
-        console.log(`Debug Tracker: Session '${s.name}': Status ${status}, id = ${s.id}`);
+        // console.log(`Debug Tracker: Session '${s.name}': Status ${status}, id = ${s.id}`);
         const props = DebuggerTrackerLocal.allSessionsById[s.id];
         if (props && (props.status !== status)) {
             props.status = status;
@@ -178,7 +178,7 @@ export class DebugTrackerFactory {
                             wantCurrentStatus: true,
                             notifyAllEvents: false,
                             // Make sure you set debugLevel to zero for production
-                            debugLevel: 2
+                            debugLevel: 0
                         }
                     };
                     const result = api.subscribe(arg);
