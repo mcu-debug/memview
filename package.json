@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -35,9 +35,9 @@
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
         "onDebugResolve:cspy",
-        "onCommand:memory-view.hello",
-        "onCommand:memory-view.toggleMemoryView",
-        "onCommand:memory-view.addMemoryView",
+        "onCommand:mcu-debug.memory-view.hello",
+        "onCommand:mcu-debug.memory-view.toggleMemoryView",
+        "onCommand:mcu-debug.memory-view.addMemoryView",
         "onWebviewPanel:memory-view.memoryView",
         "onUri"
     ],
@@ -46,17 +46,17 @@
         "commands": [
             {
                 "category": "MemoryView",
-                "command": "memory-view.hello",
+                "command": "mcu-debug.memory-view.hello",
                 "title": "Testing: Force 'memory-view' extension to load"
             },
             {
                 "category": "MemoryView",
-                "command": "memory-view.toggleMemoryView",
+                "command": "mcu-debug.memory-view.toggleMemoryView",
                 "title": "Toggle Debugger Memory View Panel/Webview"
             },
             {
                 "category": "MemoryView",
-                "command": "memory-view.addMemoryView",
+                "command": "mcu-debug.memory-view.addMemoryView",
                 "title": "Add new memory view (for debugger)"
             }
         ],

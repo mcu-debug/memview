@@ -89,8 +89,8 @@ export class MemViewExtension {
         this.setContexts();
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('memory-view.toggleMemoryView', this.toggleMemoryView.bind(this)),
-            vscode.commands.registerCommand('memory-view.hello', () => {
+            vscode.commands.registerCommand('mcu-debug.memory-view.toggleMemoryView', this.toggleMemoryView.bind(this)),
+            vscode.commands.registerCommand('mcu-debug.memory-view.hello', () => {
                 const options: MemviewUriOptions = {
                     expr: '&buf'
                 };
@@ -110,7 +110,7 @@ export class MemViewExtension {
                     console.error(e);
                 });
             }),
-            vscode.commands.registerCommand('memory-view.addMemoryView', () => {
+            vscode.commands.registerCommand('mcu-debug.memory-view.addMemoryView', () => {
                 if (this.tracker.isActive()) {
                     MemViewPanelProvider.newMemoryView();
                 } else {
