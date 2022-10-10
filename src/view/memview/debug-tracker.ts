@@ -13,9 +13,9 @@ import {
     IDebuggerSubscription,
     OtherDebugEvents,
     DebugSessionStatus,
+    DebugTracker,
 } from 'debug-tracker-vscode';
 
-const TRACKER_EXT_ID = 'mcu-debug.debug-tracker-vscode';
 let trackerApi: IDebugTracker;
 let trackerApiClientInfo: IDebuggerSubscription;
 
@@ -164,12 +164,13 @@ export class DebugTrackerFactory {
     }
 
     private subscribeToTracker(): Promise<boolean> {
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise<boolean>(async (resolve) => {
-            let trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
-            const activate = () => {
-                trackerExt?.activate().then((api) => {
-                    trackerApi = api;
+        return new Promise<boolean>((resolve) => {
+            DebugTracker.getTrackerExtension('MemoryView').then((ret) => {
+                if (ret instanceof Error) {
+                    vscode.window.showErrorMessage(ret.message);
+                    resolve(false);
+                } else {
+                    trackerApi = ret;
                     const arg: IDebuggerTrackerSubscribeArg = {
                         version: 1,
                         body: {
@@ -181,43 +182,16 @@ export class DebugTrackerFactory {
                             debugLevel: 0
                         }
                     };
-                    const result = api.subscribe(arg);
+                    const result = trackerApi.subscribe(arg);
                     if (typeof result === 'string') {
-                        vscode.window.showErrorMessage(`Subscription failed with extension ${TRACKER_EXT_ID} : ${result}`);
+                        vscode.window.showErrorMessage(`Subscription failed with extension 'debug-tracker-vscode' : ${result}`);
                         resolve(false);
                     } else {
                         trackerApiClientInfo = result;
                         resolve(true);
                     }
-                }), (e: any) => {
-                    vscode.window.showErrorMessage(`Activation of extension ${TRACKER_EXT_ID} failed: ${e}`);
-                    resolve(false);
-                };
-            };
-
-            if (!trackerExt) {
-                const doInstall = await vscode.window.showErrorMessage(
-                    `Memview requires extension '${TRACKER_EXT_ID}' to be installed. Do you want to install '${TRACKER_EXT_ID}'`,
-                    'Install ${TRACKER_EXT_ID}', 'Cancel');
-                if (doInstall) {
-                    await vscode.commands.executeCommand('workbench.extensions.installExtension', TRACKER_EXT_ID);
-                    trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
-                    while (!trackerExt) {
-                        if (trackerApi) {
-                            break;
-                        }
-                        // eslint-disable-next-line @typescript-eslint/no-empty-function
-                        await setTimeout(() => { }, 1000);
-                        trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
-                    }
-                    activate();
-                } else {
-                    resolve(false);
-                    return;
                 }
-            } else {
-                activate();
-            }
+            });
         });
     }
 

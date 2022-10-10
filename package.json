@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -150,7 +150,7 @@
         "@vscode/webview-ui-toolkit": "^1.0.0",
         "buffer": "^6.0.3",
         "clsx": "^1.2.1",
-        "debug-tracker-vscode": "^0.0.10",
+        "debug-tracker-vscode": "^0.0.11",
         "events": "^3.3.0",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
@@ -159,5 +159,8 @@
         "react-window-infinite-loader": "^1.0.8",
         "recoil": "^0.5.2",
         "uuidv4": "^6.2.13"
-    }
+    },
+    "extensionDependencies": [
+        "mcu-debug.debug-tracker-vscode"
+    ]
 }
