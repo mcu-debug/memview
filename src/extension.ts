@@ -91,6 +91,9 @@ export class MemViewExtension {
         context.subscriptions.push(
             vscode.commands.registerCommand('mcu-debug.memory-view.toggleMemoryView', this.toggleMemoryView.bind(this)),
             vscode.commands.registerCommand('mcu-debug.memory-view.hello', () => {
+                vscode.window.showInformationMessage('memview extension says hello');
+            }),
+            vscode.commands.registerCommand('mcu-debug.memory-view.uriTest', () => {
                 const options: MemviewUriOptions = {
                     expr: '&buf'
                 };

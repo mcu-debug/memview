@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.12",
+    "version": "0.0.13",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -38,8 +38,12 @@
         "onCommand:mcu-debug.memory-view.hello",
         "onCommand:mcu-debug.memory-view.toggleMemoryView",
         "onCommand:mcu-debug.memory-view.addMemoryView",
+        "onCommand:cu-debug.memory-view.uriTest",
         "onWebviewPanel:memory-view.memoryView",
         "onUri"
+    ],
+    "extensionKind": [
+        "workspace"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -58,6 +62,11 @@
                 "category": "MemoryView",
                 "command": "mcu-debug.memory-view.addMemoryView",
                 "title": "Add new memory view (for debugger)"
+            },
+            {
+                "category": "MemoryView",
+                "command": "mcu-debug.memory-view.uriTest",
+                "title": "Test URI opening mechanism"
             }
         ],
         "customEditors": [

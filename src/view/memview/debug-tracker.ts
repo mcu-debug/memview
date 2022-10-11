@@ -1,8 +1,5 @@
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import events from 'events';
 import { ITrackedDebugSessionXfer } from './shared';
 
@@ -255,6 +252,10 @@ export class DebugTrackerFactory {
     }
 }
 
+/*
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 function appendMsgToTmpDir(str: string) {
     try {
         // eslint-disable-next-line no-constant-condition
@@ -271,5 +272,4 @@ function appendMsgToTmpDir(str: string) {
         console.log(e ? e.toString() : 'unknown exception?');
     }
 }
-
-
+*/
