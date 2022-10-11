@@ -426,12 +426,12 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             // so do it the fast way, since the bytes should have been loaded by now
             let bytes: IMemValue[] = [];
             const p = [];
-            for (let row = 1; row <= this.bytesInRow / 16; row++) {
+            for (let row = 0; row < this.bytesInRow / 16; row++) {
                 const addr = this.props.address + BigInt(16 * row);
                 p.push(DualViewDoc.getCurrentDocByte(addr));
             }
             await Promise.all(p);
-            for (let row = 1; row <= this.bytesInRow / 16; row++) {
+            for (let row = 0; row < this.bytesInRow / 16; row++) {
                 const addr = this.props.address + BigInt(16 * row);
                 bytes = bytes.concat(DualViewDoc.getRowUnsafe(addr));
             }

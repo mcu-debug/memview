@@ -85,13 +85,11 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
 
     private onClickAddFunc = this.onClickAdd.bind(this);
     private onClickAdd() {
-        console.log('In onClickAdd');
         vscodePostCommandNoResponse(this.createCmd('new'));
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
     private onClickClose() {
-        console.log('In onClickClose');
         if (this.state.docId !== UnknownDocId) {
             vscodePostCommandNoResponse(this.createCmd('close'));
         }
@@ -104,7 +102,6 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
 
     private onClickRefreshFunc = this.onClickRefresh.bind(this);
     private onClickRefresh() {
-        console.log('In onClickRefresh');
         vscodePostCommandNoResponse(this.createCmd('refresh'));
     }
 

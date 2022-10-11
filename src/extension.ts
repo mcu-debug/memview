@@ -16,9 +16,16 @@ import { /*MemviewDocumentProvider, */ MemViewPanelProvider } from './view/memvi
  */
 export interface MemviewUriOptions {
     /**
-     * `expr` can be a constant memory address or an expression resulting in an address by debugger using evaluate().
-     * URI path is used if no expr is specified
+     * `memoryReference` is what a debug adapter provides. It is an opaque string representing a location in memory.
+     * If this exists, we use it if the there is no `expr`, or if you have an `expr` as a fallback memory location.
+     * This is generally provided by automated tools and not something to be manually entered.
      */
+    memoryReference?: string;
+
+    /**
+    * `expr` can be a constant memory address or an expression resulting in an address by debugger using evaluate().
+    * URI path is used if no expr is specified
+    */
     expr?: string;
 
     /**
@@ -113,9 +120,10 @@ export class MemViewExtension {
                     console.error(e);
                 });
             }),
-            vscode.commands.registerCommand('mcu-debug.memory-view.addMemoryView', () => {
+            // The following will add a memory view. If no arguments are present then the user will be prompted for an expression
+            vscode.commands.registerCommand('mcu-debug.memory-view.addMemoryView', (constOrExprOrMemRef?: string, opts?: MemviewUriOptions) => {
                 if (this.tracker.isActive()) {
-                    MemViewPanelProvider.newMemoryView();
+                    MemViewPanelProvider.newMemoryView(constOrExprOrMemRef, opts);
                 } else {
                     vscode.window.showErrorMessage('Cannot execute this command as the debug-tracker-vscode extension did not connect properly');
                 }

@@ -121,6 +121,31 @@ export class DualViewDoc {
         DualViewDoc.addDocument(this, !!info.isCurrentDoc);
     }
 
+    /**
+     *
+     * @param info
+     * @returns false is no existing doc matches, true if the current doc matches. Returns the doc object if
+     * the current doc needs to be changed to an existing doc
+     */
+    public static findDocumentIfExists(info: IWebviewDocXfer): undefined | DualViewDoc {
+        if (this.InWebview()) {
+            return undefined; // Not allowed in a webview
+        }
+        for (const doc of Object.values(DualViewDoc.allDocuments)) {
+            if (info.expr !== doc.expr) {
+                continue;
+            }
+            if (info.sessionName && info.sessionName !== doc.sessionName) {
+                continue;
+            }
+            if (info.wsFolder && info.wsFolder !== doc.wsFolder) {
+                continue;
+            }
+            return doc;
+        }
+        return undefined;
+    }
+
     static InWebview() {
         return !!myGlobals.vscode;
     }

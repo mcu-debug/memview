@@ -3,7 +3,7 @@ import querystring from 'node:querystring';
 import { uuid } from 'uuidv4';
 import { readFileSync } from 'node:fs';
 import { DualViewDoc } from './dual-view-doc';
-import { MemViewExtension } from '../../extension';
+import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
@@ -246,7 +246,6 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     }
 
     handleUri(uri: vscode.Uri): vscode.ProviderResult<void> {
-        console.log(uri);
         const options = querystring.parse(uri.query);
         const cvt = (value: string | string[] | undefined): string | undefined => {
             return value === undefined ? undefined : (Array.isArray(value) ? value.join(',') : value);
@@ -261,7 +260,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             return path;
         };
         const path = trimSlashes(decodeURIComponent(uri.path ?? ''));
-        const expr = cvt(options.expr);
+        const expr = cvt(options.expr) || cvt(options.memoryReference);
         if (!expr && !path) {
             return Promise.reject(new Error('MemView URI handler: No expression or path provided'));
         }
@@ -274,6 +273,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         if (sessionInfo) {
             session = sessionInfo.session;
         }
+
         // Someone can sneak-ing debugger we don't support, but then it will never work as we will never
         // attach to such a debugger. But it will get into our document list
         const props: IWebviewDocXfer = {
@@ -291,6 +291,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             baseAddressStale: true,
             isCurrentDoc: true,
         };
+
+        const existing = DualViewDoc.findDocumentIfExists(props);
+        if (existing) {
+            MemViewPanelProvider.Provider.showPanel();
+            if (existing !== DualViewDoc.currentDoc) {
+                DualViewDoc.setCurrentDoc(existing.docId);
+                this.updateHtmlForInit();
+            }
+            return;
+        }
+
         if (sessionInfo && sessionInfo.status === DebugSessionStatus.Stopped) {
             MemViewPanelProvider.getExprResult(sessionInfo.session, props.expr).then((addr) => {
                 props.baseAddressStale = false;
@@ -540,14 +551,53 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 baseAddressStale: false,
                 isCurrentDoc: true,
             };
-            new DualViewDoc(props);
-            MemViewPanelProvider.Provider.showPanel();
+            const existing = DualViewDoc.findDocumentIfExists(props);
+            if (existing) {
+                if (existing !== DualViewDoc.currentDoc) {
+                    DualViewDoc.setCurrentDoc(existing.docId);
+                    MemViewPanelProvider.Provider.updateHtmlForInit();
+                    MemViewPanelProvider.Provider.showPanel();
+                }
+            } else {
+                new DualViewDoc(props);
+                MemViewPanelProvider.Provider.showPanel();
+            }
         }).catch((e) => {
             vscode.window.showErrorMessage(`Error: Bad expression '${expr}'. ${e}`);
         });
     }
 
-    public static newMemoryView() {
+    public static newMemoryView(expr?: string, opts?: MemviewUriOptions | any) {
+        if (typeof expr !== 'string' || !expr) {
+            expr = undefined;
+        }
+
+        if (!expr) {
+            if (opts && (typeof opts.expr === 'string')) {
+                expr = opts.expr;
+            } else if (opts && (typeof opts.memoryReference === 'string')) {
+                expr = opts.memoryReference;
+            }
+        }
+
+        if (expr) {
+            opts = opts || {};
+            opts.expr = expr;
+            if (!opts.sessionId && vscode.debug.activeDebugSession) {
+                opts.sessionId = vscode.debug.activeDebugSession.id;
+            }
+            const uri = vscode.Uri.from({
+                scheme: vscode.env.uriScheme,
+                authority: 'mcu-debug.memory-view',
+                path: '/' + encodeURIComponent(expr),
+                query: querystring.stringify(opts as any)
+            });
+            MemViewPanelProvider.Provider.handleUri(uri)?.then(undefined, (e: any) => {
+                vscode.window.showErrorMessage(`newMemoryView failed: ${e}`);
+            });
+            return;
+        }
+
         const session = vscode.debug.activeDebugSession;
         if (!session) {
             vscode.window.showErrorMessage('There is no active debug session');

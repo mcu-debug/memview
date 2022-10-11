@@ -90,10 +90,11 @@ The interface for options is as follows
 export interface MemviewUriOptions {
     /**
      * `memoryReference` is what a debug adapter provides. It is an opaque string representing a location in memory.
-     *  If this exists, we use it if the there is no `expr`, or if you have an `expr` as a fallback memory location.
+     * If this exists, we use it if the there is no `expr`, or if you have an `expr` as a fallback memory location.
      * This is generally provided by automated tools and not something to be manually entered.
      */
     memoryReference?: string;
+
     /**
      * `expr` can be a constant memory address or an expression resulting in an address by debugger using evaluate().
      * URI path is used if no expr is specified
@@ -122,5 +123,13 @@ export interface MemviewUriOptions {
     wsFolder?: string; // Must be a Uri.toString() of an actual wsFolder for the session
 }
 ```
+
+There is also a command you can be used to add a new memory view. This may be safer in remote environments where vscode.env.openExternal can potentially fail. We have defined a command as follows
+
+```typescript
+    vscode.commands.registerCommand('mcu-debug.memory-view.addMemoryView', (constOrExprOrMemRef?: string, opts?: MemviewUriOptions);
+```
+
+If no arguments are given, user will be promoted for an expression. This command will do the same thing as what a Uri Handler does but maybe easier to use. We ourselves are going to use this method -- which can fail if the Memory View is not yet installed.
 
 There are a few challenges here `memview` is not built into a debugger and thus does not know the exact status. It does its best to track existing debug sessions -- note that there can be multiple debug sessions going on concurrently and they can be in various stages.
