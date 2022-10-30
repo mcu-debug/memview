@@ -253,7 +253,9 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         }
 
         const item = this.state.items[index];
-        item.style = style;
+        item.style = { ...style };
+        // We don't want a fixed sized width. We want the content control the width
+        delete item.style.width;
         const ret = <HexDataRow {...item}></HexDataRow>;
         // console.log(ret);
         return ret;
@@ -280,9 +282,10 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                     itemCount={this.maxNumRows}
                 >
                     {({ onItemsRendered, ref }) => (
-                        <AutoSizer disableHeight>
+                        <AutoSizer disableHeight className='hex-table-auto-sizer'>
                             {({ width }) => (
                                 <List
+                                    className='infinite-list scrollHorizontalSync'
                                     ref={this.refWrapper.bind(this, ref)}
                                     onItemsRendered={onItemsRendered}
                                     height={heightCalc}

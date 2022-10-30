@@ -34,6 +34,7 @@ interface IHexCellState {
 }
 export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     private static currentDOMElt: HTMLSpanElement | undefined = undefined; // createRef not working on span element
+    private static lastOrigValue = '';
     private static lastGoodValue = '';
     private static newGoodValue = '';
     private maxChars;
@@ -64,7 +65,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         while (val.startsWith('0x')) {
             val = val.substring(2);
         }
-        while (val.length > 1 && val.startsWith('0')) {
+        while (val.length > this.maxChars && val.startsWith('0')) {
             val = val.substring(1);
         }
         if (val.length > this.maxChars || val.length === 0 || /[^0-9a-f]]/.test(val)) {
@@ -72,7 +73,6 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
 
         // TODO: adjust for byte-length
-        HexCellValue.lastGoodValue = val;
         const intVal = parseInt(val, 16);
         if (this.props.cellInfo.cur !== intVal) {
             this.props.cellInfo.cur = intVal;
@@ -102,11 +102,27 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         return !this.state.frozen && !DualViewDoc.currentDoc?.isReadonly;
     };
 
+    static dbgPrints = false;
+    private static printJunk(label: string) {
+        if (HexCellValue.dbgPrints) {
+            console.log(
+                label,
+                'lastOrigValue',
+                HexCellValue.lastOrigValue,
+                'lastGoodValue',
+                HexCellValue.lastGoodValue,
+                'newGoodValue',
+                HexCellValue.newGoodValue
+            );
+        }
+    }
+
     public onKeyDown(event: any) {
         if (!this.editable()) {
             event.preventDefault();
             return;
         }
+        HexCellValue.printJunk('onKeyDown');
         let v: string = HexCellValue.lastGoodValue;
         if (event.key === 'Enter' || event.key === 'Tab') {
             if (v === '') {
@@ -127,9 +143,11 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
         if (v) {
             HexCellValue.newGoodValue = v;
-            setTimeout(() => {
-                this.onValueChanged(v);
-            }, 1);
+            if (HexCellValue.lastOrigValue !== v) {
+                setTimeout(() => {
+                    this.onValueChanged(v);
+                }, 1);
+            }
         }
     }
     private onKeyDownFunc = this.onKeyDown.bind(this);
@@ -159,6 +177,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     }
     private onInputFunc = this.onInput.bind(this);
     private onFocus(ev: any) {
+        HexCellValue.dbgPrints && console.log(`onFocus: new = ${ev.currentTarget.innerText}, old = ${this.valueStr()}`);
         if (ev.currentTarget && this.editable()) {
             // console.log(`onFocus: new = ${ev.currentTarget.innerText}, old = ${this.valueStr()}`);
             HexCellValue.currentDOMElt = ev.currentTarget;
@@ -168,22 +187,25 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
                 console.error('HexCellValue.selectItem failed');
             }
             document.addEventListener('keydown', this.onKeyDownFunc, false);
-            HexCellValue.lastGoodValue = this.valueStr();
-            HexCellValue.newGoodValue = '';
         }
+        HexCellValue.lastGoodValue = this.valueStr();
+        HexCellValue.lastOrigValue = HexCellValue.lastGoodValue;
+        HexCellValue.newGoodValue = '';
+        HexCellValue.printJunk('onFocus');
     }
     private onFocusFunc = this.onFocus.bind(this);
     private onBlur(ev: any) {
+        HexCellValue.dbgPrints && console.log(`onBlur: new = ${ev.currentTarget.innerText}`);
         if (ev.currentTarget && this.editable()) {
             // console.log('onBlur: ' + ev.currentTarget.innerText);
             document.removeEventListener('keydown', this.onKeyDownFunc, false);
-            HexCellValue.revertEditsInDOM(
-                HexCellValue.currentDOMElt,
-                HexCellValue.newGoodValue || this.valueStr()
-            );
-            HexCellValue.currentDOMElt = undefined;
-            HexCellValue.newGoodValue = '';
+            HexCellValue.revertEditsInDOM(HexCellValue.currentDOMElt, HexCellValue.newGoodValue || this.valueStr());
         }
+        HexCellValue.currentDOMElt = undefined;
+        HexCellValue.lastOrigValue = '';
+        HexCellValue.lastGoodValue = '';
+        HexCellValue.newGoodValue = '';
+        HexCellValue.printJunk('onBlur');
     }
     private onBlurFunc = this.onBlur.bind(this);
 
@@ -234,9 +256,7 @@ export const HexCellChar: React.FunctionComponent<{
     const val = byteInfo.cur;
     const origVal = byteInfo.orig;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
-    const classNames =
-        'hex-cell hex-cell-char' +
-        (val !== origVal || byteInfo.changed ? ' hex-cell-char-changed' : '');
+    const classNames = 'hex-cell hex-cell-char' + (val !== origVal || byteInfo.changed ? ' hex-cell-char-changed' : '');
     return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -283,15 +303,13 @@ export interface IHexHeaderRow {
 export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
     const fmt = DualViewDoc.currentDoc?.format;
     const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
-    const classNames = 'hex-header-row';
+    const classNames = 'hex-header-row scrollHorizontalSync';
     const addrCells: JSX.Element[] = [];
     const bytesInRow = bytesPerCell === 1 ? 16 : 32;
 
     let key = 2;
     for (let ix = 0; ix < bytesInRow; ix += bytesPerCell) {
-        addrCells.push(
-            <HexCellValueHeader key={key++} value={ix % 16} bytesPerCell={bytesPerCell} />
-        );
+        addrCells.push(<HexCellValueHeader key={key++} value={ix % 16} bytesPerCell={bytesPerCell} />);
     }
     const decodedTextCells: JSX.Element[] = [];
     if (bytesPerCell === 1) {
@@ -308,13 +326,9 @@ export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
     }
     return (
         <div className={classNames}>
-            <HexCellAddress
-                key={101}
-                cls='header-cell-address'
-                address={DualViewDoc.currentDoc?.startAddress ?? 0n}
-            />
+            <HexCellAddress key={100} cls='header-cell-address' address={DualViewDoc.currentDoc?.startAddress ?? 0n} />
             {addrCells}
-            <HexCellEmpty key={100} length={1} fillChar='.' cls='hex-cell-invisible' />
+            <HexCellEmpty key={101} length={1} fillChar='.' cls='hex-cell-invisible' />
             {decodedTextCells}
         </div>
     );
@@ -486,34 +500,20 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                     bytesPerCell={HexDataRow.bytePerWord}
                     key={key++}
                     address={addr}
-                    cellInfo={
-                        HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]
-                    }
+                    cellInfo={HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]}
                     onChange={this.onRowChangeFunc}
                 />
             );
             if (HexDataRow.bytePerWord === 1) {
-                chars.push(
-                    <HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={key++} />
-                );
+                chars.push(<HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={key++} />);
             }
         }
-        const gap = (
-            <HexCellEmpty
-                key={key++}
-                length={1}
-                fillChar='.'
-                cls='hex-cell-invisible'
-            ></HexCellEmpty>
-        );
         return (
             <div className={classNames} style={this.props.style || ''}>
-                <HexCellAddress key={1} address={this.props.address} />
-                <div key={2}>
-                    {values}
-                    {gap}
-                    {chars}
-                </div>
+                <HexCellAddress key={100} address={this.props.address} />
+                {values}
+                <HexCellEmpty key={101} length={1} fillChar='.' cls='hex-cell-invisible' />
+                {chars}
             </div>
         );
     }

@@ -17,6 +17,26 @@ import {
     ICmdSetMemory
 } from './shared';
 
+function scrollHorizontalSync(selector: string) {
+    let active: any = null;
+    document.querySelectorAll(selector).forEach(function (div) {
+        div.addEventListener('mouseenter', (e: any) => {
+            active = e.target;
+        });
+
+        div.addEventListener('scroll', (e: any) => {
+            if (e.target !== active) return;
+
+            document.querySelectorAll(selector).forEach(function (target) {
+                if (active === target) return;
+
+                // target.scrollTop = active.scrollTop;
+                target.scrollLeft = active.scrollLeft;
+            });
+        });
+    });
+}
+
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
         return vscodePostCommand(arg);
@@ -66,6 +86,7 @@ function startRender() {
         document.getElementById('root')
     );
 
+    scrollHorizontalSync('.scrollHorizontalSync');
     myGlobals.vscode?.postMessage({ type: 'started' });
     console.log(`HexTable:render ${timer.deltaMs()}ms`);
 }

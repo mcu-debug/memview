@@ -88,6 +88,17 @@ body {
     display: flex;
     font-weight: bold;
     white-space: pre;
+    width: min-content;
+}
+
+/* Normally, the infinite-scroller List component sets the width to be 100%. That is not right for us.
+ * We should follow the size of the content instead. There are two nested divs
+ */
+.infinite-list div {
+    width: min-content;
+}
+.infinite-list div {
+    width: min-content;
 }
 
 .hex-cell-address {

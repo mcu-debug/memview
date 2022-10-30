@@ -329,7 +329,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         const obj = DualViewDoc.storeSerializableAll(true);
         state.update('version', MemViewPanelProvider.stateVersion);
         state.update(MemViewPanelProvider.stateKeyName, obj);
-        console.log('Finished saving state');
+        // console.log('Finished saving state');
     }
 
     resolveWebviewView(
@@ -352,7 +352,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         });
 
         this.webviewView.onDidChangeVisibility(() => {
-            console.log('Visibility = ', this.webviewView?.visible);
+            // console.log('Visibility = ', this.webviewView?.visible);
         });
         webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
 
