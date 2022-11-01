@@ -13,6 +13,7 @@ interface IHexTableState {
     items: IHexDataRow[];
     rowHeight: number;
     toolbarHeight: number;
+    windowInnerHeight: number;
     scrollTop: number;
     docId: string;
     sessionId: string;
@@ -77,6 +78,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             items: [],
             toolbarHeight: estimatedToolbarHeight,
             rowHeight: estimatedRowHeight,
+            windowInnerHeight: window.innerHeight,
             docId: doc?.docId || UnknownDocId,
             sessionId: doc?.sessionId || UnknownDocId,
             sessionStatus: doc?.sessionStatus || UnknownDocId,
@@ -87,6 +89,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         this.bytesPerRow = doc ? (doc.format === '1-byte' ? 16 : 32) : 16;
         this.maxNumRows = maxNumBytes * this.bytesPerRow;
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
+        window.addEventListener('resize', this.onResize.bind(this));
     }
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
@@ -163,6 +166,12 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         const top = Math.floor(this.state.scrollTop / this.state.rowHeight);
         const want = Math.ceil(window.innerHeight / estimatedRowHeight) + 15;
         await this.loadMore(top, top + want);
+    }
+
+    private onResize() {
+        if (this.state.windowInnerHeight !== window.innerHeight) {
+            this.setState({ windowInnerHeight: window.innerHeight });
+        }
     }
 
     private scrollSettingDebouncer: NodeJS.Timeout | undefined;
@@ -269,7 +278,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     render() {
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
-        const heightCalc = window.innerHeight - this.state.rowHeight - this.state.toolbarHeight - 2;
+        const fudge = 3;
+        const heightCalc = window.innerHeight - this.state.rowHeight - this.state.toolbarHeight - fudge;
         console.log(
             `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight} scrollTop=${this.state.scrollTop}`
         );
@@ -282,7 +292,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                     itemCount={this.maxNumRows}
                 >
                     {({ onItemsRendered, ref }) => (
-                        <AutoSizer disableHeight className='hex-table-auto-sizer'>
+                        <AutoSizer disableHeight disableWidth className='hex-table-auto-sizer'>
                             {({ width }) => (
                                 <List
                                     className='infinite-list scrollHorizontalSync'

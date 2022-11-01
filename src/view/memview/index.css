@@ -1,5 +1,5 @@
 #root {
-    overflow-x: scroll;
+    overflow-x: hidden;
     overflow-y: visible;
     flex: 1;
 }
@@ -11,6 +11,7 @@ html {
 body {
     display: flex;
     min-height: 100%;
+    overflow: hidden;
 }
 
 .hex-cell {
@@ -162,7 +163,7 @@ body {
     display: flex;
     flex: 1;
     flex-direction: column;
-    width: 98%;
+    width: 100%;
 }
 
 .table-row-xxx {

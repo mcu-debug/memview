@@ -19,7 +19,7 @@ import {
 
 function scrollHorizontalSync(selector: string) {
     let active: any = null;
-    document.querySelectorAll(selector).forEach(function (div) {
+    document.querySelectorAll(selector).forEach((div) => {
         div.addEventListener('mouseenter', (e: any) => {
             active = e.target;
         });
@@ -27,11 +27,12 @@ function scrollHorizontalSync(selector: string) {
         div.addEventListener('scroll', (e: any) => {
             if (e.target !== active) return;
 
-            document.querySelectorAll(selector).forEach(function (target) {
-                if (active === target) return;
-
-                // target.scrollTop = active.scrollTop;
-                target.scrollLeft = active.scrollLeft;
+            document.querySelectorAll(selector).forEach((target: any) => {
+                if (active !== target) {
+                    // target.scrollTop = active.scrollTop;
+                    console.log('scrollHorizontalSync', active, target);
+                    target.scrollLeft = active.scrollLeft;
+                }
             });
         });
     });
