@@ -18,6 +18,7 @@ import {
 } from './shared';
 
 function scrollHorizontalSync(selector: string) {
+    // return;
     let active: any = null;
     document.querySelectorAll(selector).forEach((div) => {
         div.addEventListener('mouseenter', (e: any) => {

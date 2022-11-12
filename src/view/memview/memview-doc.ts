@@ -219,7 +219,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.registerWebviewViewProvider(
                 MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
                 webviewOptions: {
-                    retainContextWhenHidden: true
+                    // retainContextWhenHidden: true
                 }
             }),
             vscode.window.registerUriHandler(MemViewPanelProvider.Provider)

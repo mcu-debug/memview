@@ -298,12 +298,13 @@ export const HexCellValueHeader: React.FunctionComponent<{
 
 export interface IHexHeaderRow {
     style?: any;
+    cls?: string;
 }
 
-export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
+export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
     const fmt = DualViewDoc.currentDoc?.format;
     const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
-    const classNames = 'hex-header-row scrollHorizontalSync';
+    const classNames = `hex-header-row scrollHorizontalSync ${props.cls || ''}`;
     const addrCells: JSX.Element[] = [];
     const bytesInRow = bytesPerCell === 1 ? 16 : 32;
 
@@ -325,7 +326,7 @@ export function HexHeaderRow(_props: IHexHeaderRow): JSX.Element {
         }
     }
     return (
-        <div className={classNames}>
+        <div className={classNames} style={props.style || {}}>
             <HexCellAddress key={100} cls='header-cell-address' address={DualViewDoc.currentDoc?.startAddress ?? 0n} />
             {addrCells}
             <HexCellEmpty key={101} length={1} fillChar='.' cls='hex-cell-invisible' />

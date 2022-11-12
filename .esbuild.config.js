@@ -39,7 +39,7 @@ esbuild.build({
 	minify: prod,
 	watch: watch && {
 		onRebuild(error, result) {
-			onRebuildReport('RTOS View', error, result);
+			onRebuildReport('MEMORY View', error, result);
 		},
 	},	platform: 'browser',
   outfile: 'dist/memview.js',
