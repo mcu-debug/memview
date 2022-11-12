@@ -219,7 +219,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.registerWebviewViewProvider(
                 MemViewPanelProvider.viewType, MemViewPanelProvider.Provider, {
                 webviewOptions: {
-                    // retainContextWhenHidden: true
+                    retainContextWhenHidden: true
                 }
             }),
             vscode.window.registerUriHandler(MemViewPanelProvider.Provider)
@@ -343,10 +343,10 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         webviewView.description = 'View Memory from Debuggers';
         this.webviewView = webviewView;
 
-        console.log('In resolveWebviewView');
+        // console.log('In resolveWebviewView');
         this.webviewView.onDidDispose((_e) => {
             // This is never called when extension exits
-            console.log('disposed webView');
+            // console.log('disposed webView');
             this.webviewView = undefined;
             MemViewPanelProvider.saveState();
         });

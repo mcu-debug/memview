@@ -113,10 +113,8 @@ export class DualViewDoc {
                 this.modifiedMap.set(BigInt(key), value);
             }
         }
-        this.memory = info.memory
-            ? MemPages.restoreSerializable(info.memory, this)
-            : new MemPages(this);
-        console.log(info.clientState);
+        this.memory = info.memory ? MemPages.restoreSerializable(info.memory, this) : new MemPages(this);
+        // console.log(info.clientState);
         this.clientState = info.clientState || {};
         DualViewDoc.addDocument(this, !!info.isCurrentDoc);
     }
@@ -212,10 +210,7 @@ export class DualViewDoc {
     }
 
     async getMemoryPage(addr: bigint, nBytes: number): Promise<Uint8Array> {
-        let ary =
-            !this.inWebview && !this.isReady
-                ? this.memory.getPage(addr)
-                : this.memory.getPageIfFresh(addr);
+        let ary = !this.inWebview && !this.isReady ? this.memory.getPage(addr) : this.memory.getPageIfFresh(addr);
         if (ary) {
             return Promise.resolve(ary);
         }
@@ -246,9 +241,10 @@ export class DualViewDoc {
                     (doc.wsFolder === wsFolder || !doc.wsFolder)
                 ) {
                     // We found an orphaned document and a new debug session started that can now own it
-                    console.log(
-                        `New debug session ${sessionId} replaces ${doc.sessionId} inWebview = ${doc.inWebview}`
-                    );
+                    false &&
+                        console.log(
+                            `New debug session ${sessionId} replaces ${doc.sessionId} inWebview = ${doc.inWebview}`
+                        );
                     doc.sessionId = sessionId;
                     doc.sessionName = sessionName;
                     doc.wsFolder = wsFolder;
@@ -445,8 +441,7 @@ export class DualViewDoc {
     // This is only called from within VSCode and not from the WebView
     static setCurrentDoc(docOrId: DualViewDoc | string) {
         const oldId = DualViewDoc.currentDoc?.docId;
-        const id: string =
-            typeof docOrId === 'string' ? (docOrId as string) : (docOrId as DualViewDoc).docId;
+        const id: string = typeof docOrId === 'string' ? (docOrId as string) : (docOrId as DualViewDoc).docId;
         const doc = DualViewDoc.allDocuments[id];
         if (doc) {
             if (DualViewDoc.currentDoc) {
@@ -557,10 +552,7 @@ export class DualViewDoc {
             doc.isReady = false;
             lastDoc = doc;
         }
-        if (
-            DualViewDoc.InWebview() &&
-            Object.getOwnPropertyNames(DualViewDoc.allDocuments).length === 0
-        ) {
+        if (DualViewDoc.InWebview() && Object.getOwnPropertyNames(DualViewDoc.allDocuments).length === 0) {
             lastDoc = DualViewDoc.createDummyDoc();
         }
         if (!DualViewDoc.currentDoc && lastDoc) {
@@ -657,9 +649,7 @@ class MemPages {
 
     getPageIfFresh(addr: bigint): Uint8Array | undefined {
         const slot = this.getSlot(addr);
-        return slot < this.pages.length && !this.pages[slot].stale
-            ? this.pages[slot].current
-            : undefined;
+        return slot < this.pages.length && !this.pages[slot].stale ? this.pages[slot].current : undefined;
     }
 
     getPage(addr: bigint): Uint8Array | undefined {
@@ -809,7 +799,7 @@ class MemPages {
             newPages.push(newPage);
         }
         const ret = new MemPages(parent, newPages);
-        console.log(ret.pages);
+        // console.log(ret.pages);
         return ret;
     }
 }

@@ -60,13 +60,13 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     private onResizeTimeout: NodeJS.Timeout | undefined;
     onResize() {
         if (this.onResizeTimeout) {
-            console.log('Toolbar resize clearing timeout');
+            // console.log('Toolbar resize clearing timeout');
             clearTimeout(this.onResizeTimeout);
         }
         this.onResizeTimeout = setTimeout(() => {
             this.onResizeTimeout = undefined;
             // Just a dummy state to fore a redraw to re-render right justified elements
-            console.log('Window width = ', window.innerWidth);
+            // console.log('Window width = ', window.innerWidth);
             if (this.state.width !== window.innerWidth) {
                 this.setState({ width: window.innerWidth });
             }
@@ -151,7 +151,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
 
     render() {
-        console.log('In MemViewToolbar.render');
+        // console.log('In MemViewToolbar.render');
         const docItems = [];
         let count = 0;
         let status = 'No status';
@@ -184,12 +184,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     {docItems}
                 </VSCodeDropdown>
                 <span>&nbsp;</span>
-                <VSCodeButton
-                    key={key++}
-                    appearance='icon'
-                    title='Add new memory view'
-                    onClick={this.onClickAddFunc}
-                >
+                <VSCodeButton key={key++} appearance='icon' title='Add new memory view' onClick={this.onClickAddFunc}>
                     <span className='codicon codicon-add'></span>
                 </VSCodeButton>
                 <VSCodeButton
@@ -217,10 +212,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     ></span>
                 </VSCodeButton>
                 <VSCodeButton key={key++} appearance='icon' onClick={this.onClickSettingsFunc}>
-                    <span
-                        className='codicon codicon-gear'
-                        title='Edit global settings. Coming soon'
-                    ></span>
+                    <span className='codicon codicon-gear' title='Edit global settings. Coming soon'></span>
                 </VSCodeButton>
                 <span className='debug-status'>Status: {status}</span>
                 <VSCodeButton
@@ -385,11 +377,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         <label key={key++} className='dropdown-label'>
                             Format
                         </label>
-                        <VSCodeDropdown
-                            key={key++}
-                            value={this.format}
-                            onChange={this.onFormatChangeFunc}
-                        >
+                        <VSCodeDropdown key={key++} value={this.format} onChange={this.onFormatChangeFunc}>
                             <VSCodeOption key={key++} value='1-byte'>
                                 1-Byte
                             </VSCodeOption>
@@ -405,11 +393,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         <label key={key++} className='dropdown-label'>
                             Endianness
                         </label>
-                        <VSCodeDropdown
-                            key={key++}
-                            value={this.endian}
-                            onChange={this.onEndiannessChangeFunc}
-                        >
+                        <VSCodeDropdown key={key++} value={this.endian} onChange={this.onEndiannessChangeFunc}>
                             <VSCodeOption key={key++} value='little'>
                                 Little
                             </VSCodeOption>

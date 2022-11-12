@@ -9,6 +9,29 @@ import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 import { UnknownDocId } from './shared';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function scrollHorizontalSync(selector: string) {
+    // return;
+    let active: any = null;
+    document.querySelectorAll(selector).forEach((div) => {
+        div.addEventListener('mouseenter', (e: any) => {
+            active = e.target;
+        });
+
+        div.addEventListener('scroll', (e: any) => {
+            if (e.target !== active) return;
+
+            document.querySelectorAll(selector).forEach((target: any) => {
+                if (active !== target) {
+                    // target.scrollTop = active.scrollTop;
+                    console.log('scrollHorizontalSync', active, target);
+                    target.scrollLeft = active.scrollLeft;
+                }
+            });
+        });
+    });
+}
+
 interface IHexTableState {
     items: IHexDataRow[];
     rowHeight: number;
@@ -85,7 +108,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             baseAddress: doc?.baseAddress ?? 0n,
             scrollTop: getDocStateScrollTop()
         };
-        console.log('HexTableVirtual2 ctor()', this.state);
+        // console.log('HexTableVirtual2 ctor()', this.state);
         this.bytesPerRow = doc ? (doc.format === '1-byte' ? 16 : 32) : 16;
         this.maxNumRows = maxNumBytes * this.bytesPerRow;
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
@@ -146,6 +169,15 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                 }
             }, 250);
         }
+        /*
+        const elements = document.querySelectorAll('.infinite-list div');
+        for (const item of elements || []) {
+            item.classList.add('scrollHorizontalSync');
+        }
+        setTimeout(() => {
+            scrollHorizontalSync('.scrollHorizontalSync');
+        }, 250);
+        */
         try {
             await this.loadInitial();
             this.restoreScroll();
@@ -278,13 +310,14 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     render() {
         // Use the parent windows height and subtract the header row and also a bit more so the
         // never displays a scrollbar
-        const fudge = 3;
+        const fudge = 6; // Seems to work better when horizontal scrollbar appears
         const heightCalc = window.innerHeight - this.state.rowHeight - this.state.toolbarHeight - fudge;
-        console.log(
-            `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight} scrollTop=${this.state.scrollTop}`
-        );
+        false &&
+            console.log(
+                `In HexTableView2.render(), rowHeight=${this.state.rowHeight}, toolbarHeight=${this.state.toolbarHeight} scrollTop=${this.state.scrollTop}`
+            );
         return (
-            <div className='container' style={{ overflowX: 'scroll' }}>
+            <div className='container' style={{ overflowX: 'visible' }}>
                 <HexHeaderRow></HexHeaderRow>
                 <InfiniteLoader
                     isItemLoaded={this.isItemLoadedFunc}
@@ -292,7 +325,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                     itemCount={this.maxNumRows}
                 >
                     {({ onItemsRendered, ref }) => (
-                        <AutoSizer disableHeight disableWidth className='hex-table-auto-sizer'>
+                        <AutoSizer disableHeight disableWidth className='hex-table-auto-sizer scrollHorizontalSync'>
                             {({ width }) => (
                                 <List
                                     className='infinite-list scrollHorizontalSync'

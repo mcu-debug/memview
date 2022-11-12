@@ -462,9 +462,11 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     componentWillUnmount() {
-        DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
-        // console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
-        this.mountStatus = false;
+        if (this.mountStatus) {
+            DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
+            // console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
+            this.mountStatus = false;
+        }
     }
 
     private onGlobalEventFunc = this.onGlobalEvent.bind(this);
