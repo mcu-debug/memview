@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { uuid } from 'uuidv4';
 import { readFileSync } from 'node:fs';
-import { DualViewDoc } from './dual-view-doc';
+import { DocDebuggerStatus, DualViewDoc } from './dual-view-doc';
 import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
@@ -448,7 +448,12 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     }
                     case CmdType.SettingsChanged: {
                         const doc = DualViewDoc.getDocumentById(body.docId);
-                        if (doc) {
+                        const newSettings = (body as ICmdSettingsChanged)?.settings;
+                        if (doc && newSettings) {
+                            if ((doc.expr !== newSettings.expr) && (doc.sessionStatus !== DocDebuggerStatus.Stopped)) {
+                                vscode.window.showInformationMessage(`Memory view expression changed to ${newSettings.expr}. ` +
+                                    'The view contents will be updated the next time the debugger is paused');
+                            }
                             doc.updateSettings((body as ICmdSettingsChanged).settings);
                             this.updateHtmlForInit();
                         }
@@ -489,7 +494,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
 
     private debuggerStatusChanged(arg: ITrackedDebugSessionXfer) {
         DualViewDoc.debuggerStatusChanged(arg.sessionId, arg.status, arg.sessionName, arg.wsFolder);
-        if (this.webviewView?.visible) {
+        if (this.webviewView) {
             const msg: ICmdBase = {
                 type: CmdType.DebugerStatus,
                 sessionId: arg.sessionId,

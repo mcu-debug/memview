@@ -155,8 +155,11 @@ export class DualViewDoc {
     }
 
     updateSettings(settings: IModifiableProps) {
+        if (this.expr !== settings.expr) {
+            this.expr = settings.expr;
+            this.markAsStale();
+        }
         this.displayName = settings.displayName;
-        this.expr = settings.expr;
         this.endian = settings.endian;
         this.format = settings.format;
         // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
@@ -187,6 +190,9 @@ export class DualViewDoc {
 
     async getStartAddress(): Promise<bigint> {
         if (!this.startAddressStale) {
+            return Promise.resolve(this.startAddress);
+        }
+        if (this.sessionStatus !== DocDebuggerStatus.Stopped) {
             return Promise.resolve(this.startAddress);
         }
         const arg: ICmdGetStartAddress = {
@@ -232,6 +238,8 @@ export class DualViewDoc {
         sessionName: string,
         wsFolder: string
     ) {
+        const debug = false;
+        debug && console.log(sessionId, status, sessionName, wsFolder);
         for (const [_id, doc] of Object.entries(DualViewDoc.allDocuments)) {
             const oldStatus = doc.sessionStatus;
             if (doc.sessionId !== sessionId) {
@@ -241,10 +249,8 @@ export class DualViewDoc {
                     (doc.wsFolder === wsFolder || !doc.wsFolder)
                 ) {
                     // We found an orphaned document and a new debug session started that can now own it
-                    false &&
-                        console.log(
-                            `New debug session ${sessionId} replaces ${doc.sessionId} inWebview = ${doc.inWebview}`
-                        );
+                    debug &&
+                        console.log(`New debug session ${sessionId} => ${doc.sessionId} webview = ${doc.inWebview}`);
                     doc.sessionId = sessionId;
                     doc.sessionName = sessionName;
                     doc.wsFolder = wsFolder;
@@ -267,7 +273,9 @@ export class DualViewDoc {
                     doc.sessionStatus = DocDebuggerStatus.Busy;
                 }
             }
+            debug && console.log('old vs new status', oldStatus, doc.sessionStatus);
             if (doc === DualViewDoc.currentDoc && oldStatus !== doc.sessionStatus) {
+                debug && console.log('emitting event on debugger status', doc.sessionStatus);
                 doc.emitGlobalEvent(DualViewDocGlobalEventType.DebuggerStatus);
             }
         }
@@ -456,8 +464,15 @@ export class DualViewDoc {
     }
 
     private statusChangeTimeout: NodeJS.Timeout | undefined;
+    private pendingArg: IDualViewDocGlobalEventArg | undefined;
     private emitGlobalEvent(type: DualViewDocGlobalEventType) {
-        if (!this.inWebview || this !== DualViewDoc.currentDoc) {
+        const debug = false;
+        if (!this.inWebview) {
+            debug && console.log('emitGlobalEvent early return because not in webview');
+            return;
+        }
+        if (this !== DualViewDoc.currentDoc) {
+            debug && console.log('emitGlobalEvent early return because not current doc');
             return;
         }
 
@@ -466,17 +481,20 @@ export class DualViewDoc {
         // a -> b -> a as not a state change if it happens too rapidly. May also
         // save flickering if we debounce.
         if (this.statusChangeTimeout) {
+            debug && console.log('emitGlobalEvent Canceling event', this.pendingArg);
             clearTimeout(this.statusChangeTimeout);
         }
+        const arg: IDualViewDocGlobalEventArg = {
+            type: type,
+            docId: this.docId,
+            sessionId: this.sessionId,
+            sessionStatus: this.sessionStatus,
+            baseAddress: this.baseAddress
+        };
+        this.pendingArg = arg;
         this.statusChangeTimeout = setTimeout(() => {
             this.statusChangeTimeout = undefined;
-            const arg: IDualViewDocGlobalEventArg = {
-                type: type,
-                docId: this.docId,
-                sessionId: this.sessionId,
-                sessionStatus: this.sessionStatus,
-                baseAddress: this.baseAddress
-            };
+            debug && console.log('emitGlobalEvent Emitting event', arg);
             DualViewDoc.globalEventEmitter.emit(arg.type, arg);
             DualViewDoc.globalEventEmitter.emit('any', arg);
         }, 100); // Is this enough delay?!?!?

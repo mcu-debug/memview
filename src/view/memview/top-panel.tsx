@@ -44,6 +44,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     }
 
     private onGlobalEvent(arg: IDualViewDocGlobalEventArg) {
+        // false && console.log('MemViewToolbar.onGlobalEvent', arg);
         const newState: IMemViewPanelState = { ...this.state };
         if (arg.docId && arg.docId !== this.state.docId) {
             newState.docId = arg.docId;

@@ -67,7 +67,7 @@ function startRender() {
     );
 
     myGlobals.vscode?.postMessage({ type: 'started' });
-    // console.log(`HexTable:render ${timer.deltaMs()}ms`);
+    false && console.log(`HexTable:render ${timer.deltaMs()}ms`);
 }
 
 doStartup();
