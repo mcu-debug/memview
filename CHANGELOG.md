@@ -9,6 +9,11 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
 
+## 0.0.17 - Nov 18, 2022
+
+-   Fix for [Issue#9 Data regions are not refreshed synchronously](https://github.com/mcu-debug/memview/issues/9). Needed to fore a refresh
+-   Fix for when you change the editor font size, the data rows were not being resized accordingly. The data rows are not a tiny bit more compact as well
+
 ## 0.0.16 - Nov 12, 2022
 
 -   Partial fix for [Issue#7 Not vertical layout friendly](https://github.com/mcu-debug/memview/issues/7). We still have a big problem with the header not scrolling horizontally with the content but the content is no longer cut-off/shrunk/etc. Experts in CSS/HTML/React are welcome to help us. We will eventually get this right.

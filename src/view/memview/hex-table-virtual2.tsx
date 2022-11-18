@@ -139,45 +139,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     private toolbarHeightDetected = false;
     async componentDidMount() {
         if (!this.lineHeightDetectTimer) {
-            this.rowHeightDetected = false;
-            this.toolbarHeightDetected = false;
-            this.lineHeightDetectTimer = setInterval(() => {
-                for (const clsName of ['.hex-cell-value', '.toolbar']) {
-                    const elt = document.querySelector(clsName);
-                    if (elt) {
-                        const tmp = (elt as any).offsetHeight;
-                        const isCell = clsName === '.hex-cell-value';
-                        if (isCell && !this.rowHeightDetected) {
-                            this.rowHeightDetected = true;
-                            if (tmp !== this.state.rowHeight) {
-                                this.setState({ rowHeight: tmp });
-                                setVscodeRowHeight(tmp);
-                            }
-                        } else if (!isCell && !this.toolbarHeightDetected) {
-                            this.toolbarHeightDetected = true;
-                            if (tmp !== this.state.toolbarHeight) {
-                                this.setState({ toolbarHeight: tmp });
-                                setVscodeToolbarHeight(tmp);
-                            }
-                        }
-                        // TODO: This should be set back to false when theme/fonts change
-                    }
-                }
-                if (this.rowHeightDetected && this.toolbarHeightDetected) {
-                    clearInterval(this.lineHeightDetectTimer);
-                    this.lineHeightDetectTimer = undefined;
-                }
-            }, 250);
+            this.heightDetector();
         }
-        /*
-        const elements = document.querySelectorAll('.infinite-list div');
-        for (const item of elements || []) {
-            item.classList.add('scrollHorizontalSync');
-        }
-        setTimeout(() => {
-            scrollHorizontalSync('.scrollHorizontalSync');
-        }, 250);
-        */
         try {
             await this.loadInitial();
             this.restoreScroll();
@@ -186,6 +149,50 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             // debugger;
             console.error(e);
         }
+    }
+
+    private resizeObserver: ResizeObserver | undefined;
+    private heightDetector() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = undefined;
+        }
+        if (!this.lineHeightDetectTimer) {
+            clearInterval(this.lineHeightDetectTimer);
+        }
+        this.rowHeightDetected = false;
+        this.toolbarHeightDetected = false;
+        this.lineHeightDetectTimer = setInterval(() => {
+            for (const clsName of ['.hex-header-row', '.toolbar']) {
+                const elt = document.querySelector(clsName);
+                if (elt) {
+                    const tmp = (elt as any).offsetHeight;
+                    const isCell = clsName === '.hex-header-row';
+                    if (isCell && !this.rowHeightDetected) {
+                        this.rowHeightDetected = true;
+                        const h = tmp - 2; // We don't need the padding
+                        if (h !== this.state.rowHeight) {
+                            this.setState({ rowHeight: h });
+                            setVscodeRowHeight(h);
+                        }
+                        this.resizeObserver = new ResizeObserver(() => {
+                            this.heightDetector();
+                        });
+                        this.resizeObserver.observe(elt);
+                    } else if (!this.toolbarHeightDetected) {
+                        this.toolbarHeightDetected = true;
+                        if (tmp !== this.state.toolbarHeight) {
+                            this.setState({ toolbarHeight: tmp });
+                            setVscodeToolbarHeight(tmp);
+                        }
+                    }
+                }
+            }
+            if (this.rowHeightDetected && this.toolbarHeightDetected) {
+                clearInterval(this.lineHeightDetectTimer);
+                this.lineHeightDetectTimer = undefined;
+            }
+        }, 100); // Not sure if an interval is really needed or just a small/no delay will work
     }
 
     restoreScroll() {
