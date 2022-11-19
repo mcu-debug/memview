@@ -11,8 +11,8 @@ Please note that we are still in Preview mode. For those using the API, this can
 
 ## 0.0.17 - Nov 18, 2022
 
--   Fix for [Issue#9 Data regions are not refreshed synchronously](https://github.com/mcu-debug/memview/issues/9). Needed to fore a refresh
--   Fix for when you change the editor font size, the data rows were not being resized accordingly. The data rows are not a tiny bit more compact as well
+-   Fix for [Issue#9 Data regions are not refreshed synchronously](https://github.com/mcu-debug/memview/issues/9). Needed to force a refresh
+-   Fix for when you change the editor font size, the data rows were not being resized accordingly. The data rows are now a tiny bit more compact as well
 
 ## 0.0.16 - Nov 12, 2022
 
