@@ -28,7 +28,6 @@ interface IHexCell {
     bytesPerCell: number;
     address: bigint;
     cellInfo: IMemValue | IMemValue32or64;
-    selChangedToggle: boolean;
     onChange?: OnCellChangeFunc;
 }
 
@@ -269,7 +268,6 @@ export const HexCellAddress: React.FC<{ address: bigint; cls?: string }> = ({ ad
 export const HexCellChar: React.FunctionComponent<{
     address: bigint;
     byteInfo: IMemValue;
-    selChangedToggle: boolean;
 }> = ({ address, byteInfo }) => {
     const val = byteInfo.cur;
     const origVal = byteInfo.orig;
@@ -358,7 +356,6 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 
 export interface IHexDataRow {
     address: bigint;
-    selChangedToggle: boolean;
     onChange?: OnCellChangeFunc;
     style?: any;
     cls?: string;
@@ -367,7 +364,6 @@ export interface IHexDataRow {
 interface IHexDataRowState {
     bytes: IMemValue[];
     words: IMemValue32or64[];
-    selChanged: boolean;
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
@@ -404,8 +400,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         }
         this.state = {
             bytes: bytes,
-            words: this.convertToWords(bytes),
-            selChanged: this.props.selChangedToggle
+            words: this.convertToWords(bytes)
         };
     }
 
@@ -528,7 +523,6 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             values.push(
                 <HexCellValue
                     bytesPerCell={HexDataRow.bytePerWord}
-                    selChangedToggle={this.props.selChangedToggle}
                     key={key++}
                     address={addr}
                     cellInfo={HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]}
@@ -536,14 +530,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                 />
             );
             if (HexDataRow.bytePerWord === 1) {
-                chars.push(
-                    <HexCellChar
-                        address={addr}
-                        byteInfo={this.state.bytes[ix]}
-                        selChangedToggle={this.props.selChangedToggle}
-                        key={key++}
-                    />
-                );
+                chars.push(<HexCellChar address={addr} byteInfo={this.state.bytes[ix]} key={key++} />);
             }
         }
         return (
