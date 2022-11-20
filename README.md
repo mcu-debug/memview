@@ -19,7 +19,7 @@ This was originally conceived as part of the [Cortex-Debug](https://github.com/M
 -   Visually tell which bytes were modified since last 'resume' of a program. Changed cells (byte, word or double-word) are highlighted.
 -   One panel hosts multiple views that you can switch between. This was a deliberate choice.
 -   Separate views can interfere with the performance of the debug session single stepping because of too much traffic
--   Coming soon: selection and clipboard interaction (copy, paste).
+-   Coming soon: Paste. Selection and copy to clipboard already available.
 -   Coming soon: memory editing. You can edit now but there is capability to commit changes to program memory.
 -   Coming soon: Ability to host the window either in the 'Panel' area (alongside Debug Console) or in the editor area.
 

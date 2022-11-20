@@ -17,6 +17,8 @@ import { SelContext } from './selection';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 export type OnSelChangedFunc = (address: bigint) => void;
+export type CellInfoType = IMemValue | IMemValue32or64;
+
 interface IMemValue32or64 {
     cur: bigint;
     orig: bigint;
@@ -27,7 +29,7 @@ interface IMemValue32or64 {
 interface IHexCell {
     bytesPerCell: number;
     address: bigint;
-    cellInfo: IMemValue | IMemValue32or64;
+    cellInfo: CellInfoType;
     onChange?: OnCellChangeFunc;
 }
 
@@ -39,7 +41,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     private static lastOrigValue = '';
     private static lastGoodValue = '';
     private static newGoodValue = '';
-    private maxChars;
+    private static maxChars = 2;
 
     constructor(public props: IHexCell) {
         super(props);
@@ -49,7 +51,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         this.state = {
             frozen: false
         };
-        this.maxChars = this.props.bytesPerCell * 2;
+        HexCellValue.maxChars = this.props.bytesPerCell * 2;
     }
 
     classNames = () => {
@@ -68,10 +70,10 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         while (val.startsWith('0x')) {
             val = val.substring(2);
         }
-        while (val.length > this.maxChars && val.startsWith('0')) {
+        while (val.length > HexCellValue.maxChars && val.startsWith('0')) {
             val = val.substring(1);
         }
-        if (val.length > this.maxChars || val.length === 0 || /[^0-9a-f]]/.test(val)) {
+        if (val.length > HexCellValue.maxChars || val.length === 0 || /[^0-9a-f]]/.test(val)) {
             return;
         }
 
@@ -87,19 +89,21 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     };
 
     valueStr = () => {
-        if (this.props.bytesPerCell === 1) {
-            return this.props.cellInfo.cur >= 0
-                ? hexValuesLookup[((this.props.cellInfo as IMemValue).cur >>> 0) & 0xff]
-                : '~~';
+        return HexCellValue.formatValue(this.props.bytesPerCell === 1, this.props.cellInfo);
+    };
+
+    public static formatValue(isByte: boolean, cellInfo: CellInfoType): string {
+        if (isByte) {
+            return cellInfo.cur >= 0 ? hexValuesLookup[((cellInfo as IMemValue).cur >>> 0) & 0xff] : '~~';
         } else {
-            const info = this.props.cellInfo as IMemValue32or64;
+            const info = cellInfo as IMemValue32or64;
             const value = info.cur;
             const str = info.invalid
                 ? '~'.padStart(this.maxChars, '~')
                 : value.toString(16).padStart(this.maxChars, '0');
             return str;
         }
-    };
+    }
 
     editable = () => {
         return !this.state.frozen && !DualViewDoc.currentDoc?.isReadonly;
@@ -475,11 +479,15 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         }
     }
 
+    public getRowValues(): CellInfoType[] {
+        return HexDataRow.bytePerWord === 1 ? this.state.bytes : this.state.words;
+    }
+
     async componentDidMount() {
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         this.mountStatus = true;
         await this.getBytes();
-        this.myRef.current && SelContext.current?.addRow(this.props.address, this.myRef.current);
+        this.myRef.current && SelContext.current?.addRow(this.props.address, this);
     }
 
     componentWillUnmount() {
@@ -487,6 +495,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
             // console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
             this.mountStatus = false;
+            this.myRef.current && SelContext.current?.removeRow(this.props.address);
         }
     }
 

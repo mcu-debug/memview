@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.17",
+    "version": "0.0.18",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
