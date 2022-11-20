@@ -264,7 +264,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             const tmp: IHexDataRow = {
                 address: addr,
                 onChange: this.props.onChange,
-                selChangedToggle: this.state.selChangedToggle
+                selChangedToggle: true // this.state.selChangedToggle
             };
             items.push(tmp);
             if (ix >= startIndex && ix <= stopIndex) {

@@ -16,6 +16,7 @@ import { hexFmt64, hexFmt64 as _hexFmt64 } from './utils';
 import { SelContext } from './selection';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
+export type OnSelChangedFunc = (address: bigint) => void;
 interface IMemValue32or64 {
     cur: bigint;
     orig: bigint;
@@ -236,9 +237,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
             } else {
                 console.log('shift mouse click');
             }
-            setTimeout(() => {
-                SelContext.current?.setCurrent(this.props.address, e.target as Element);
-            }, 100);
+            SelContext.current?.setCurrent(this.props.address, e.target as Element);
         }
     }
 
@@ -268,14 +267,17 @@ export const HexCellAddress: React.FC<{ address: bigint; cls?: string }> = ({ ad
 };
 
 export const HexCellChar: React.FunctionComponent<{
-    _address: bigint;
+    address: bigint;
     byteInfo: IMemValue;
-}> = ({ _address, byteInfo }) => {
-    // const id = `hex-cell-char-${address}`
+    selChangedToggle: boolean;
+}> = ({ address, byteInfo }) => {
     const val = byteInfo.cur;
     const origVal = byteInfo.orig;
     const valueStr = val >= 0 ? charCodesLookup[val] : '~~';
-    const classNames = 'hex-cell hex-cell-char' + (val !== origVal || byteInfo.changed ? ' hex-cell-char-changed' : '');
+    let classNames = 'hex-cell hex-cell-char' + (val !== origVal || byteInfo.changed ? ' hex-cell-char-changed' : '');
+    if (SelContext.isSelected(address)) {
+        classNames += ' selected-char';
+    }
     return <span className={classNames}>{valueStr}</span>;
 };
 
@@ -365,6 +367,7 @@ export interface IHexDataRow {
 interface IHexDataRowState {
     bytes: IMemValue[];
     words: IMemValue32or64[];
+    selChanged: boolean;
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
@@ -401,7 +404,8 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         }
         this.state = {
             bytes: bytes,
-            words: this.convertToWords(bytes)
+            words: this.convertToWords(bytes),
+            selChanged: this.props.selChangedToggle
         };
     }
 
@@ -513,8 +517,8 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     }
 
     render() {
-        // console.log(`In HexDataRow.render() ${this.props.address}`);
         const addrStr = hexFmt64(this.props.address);
+        // console.log(`In HexDataRow.render() ${addrStr}`);
         const classNames = `hex-data-row r${addrStr} ` + (this.props.cls || '');
         const values = [];
         const chars = [];
@@ -532,7 +536,14 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                 />
             );
             if (HexDataRow.bytePerWord === 1) {
-                chars.push(<HexCellChar _address={addr} byteInfo={this.state.bytes[ix]} key={key++} />);
+                chars.push(
+                    <HexCellChar
+                        address={addr}
+                        byteInfo={this.state.bytes[ix]}
+                        selChangedToggle={this.props.selChangedToggle}
+                        key={key++}
+                    />
+                );
             }
         }
         return (

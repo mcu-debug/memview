@@ -4,9 +4,6 @@ import events from 'events';
 export class SelRange {
     constructor(readonly start: bigint, readonly end: bigint) {}
 }
-
-const rowDataCellStart = 1; // 0 is address, the actual cells start at 1
-const debug = true;
 export class SelContext {
     public static current: SelContext | undefined;
     public static eventEmitter = new events.EventEmitter();
@@ -56,8 +53,8 @@ export class SelContext {
             const min = bigIntMin(inRange ? prev : this.range.start, address);
             const max = bigIntMax(inRange ? prev : this.range.end, address);
             this.range = new SelRange(min, max);
-            SelContext.eventEmitter.emit('changed', this.range);
         }
+        SelContext.eventEmitter.emit('changed', this.range);
     }
 
     public addRow(addr: bigint, node: HTMLElement) {
