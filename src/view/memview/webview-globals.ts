@@ -4,6 +4,7 @@ declare function acquireVsCodeApi(): IVsCodeApi;
 export function globalsInit() {
     window.addEventListener('message', vscodeReceiveMessage);
     myGlobals.vscode = acquireVsCodeApi();
+    myGlobals.selContext = new SelContext();
 }
 
 import {
@@ -13,6 +14,7 @@ import {
 import { DualViewDoc } from './dual-view-doc';
 import { MsgResponse, ICmdBase, IMessage, CmdType } from './shared';
 import { WebviewDebugTracker } from './webview-debug-tracker';
+import { SelContext } from './selection';
 
 export interface IVsCodeApi {
     postMessage(msg: unknown): void;
@@ -22,6 +24,7 @@ export interface IVsCodeApi {
 
 export interface IMyGlobals {
     vscode?: IVsCodeApi;
+    selContext?: SelContext;
 }
 
 export const myGlobals: IMyGlobals = {

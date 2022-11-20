@@ -29,6 +29,11 @@ body {
     line-height: 2.5ch;
 }
 
+.selected-cell {
+    background: var(--vscode-editor-selectionBackground);
+    color: var(--vscode-editor-selectionForeground);
+}
+
 .hex-cell-value-header {
     color: var(--vscode-symbolIcon-classForeground);
     font-weight: bold;

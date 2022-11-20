@@ -8,6 +8,7 @@ import { IHexDataRow, HexDataRow, HexHeaderRow, OnCellChangeFunc } from './hex-e
 import { DualViewDoc, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { vscodeGetState, vscodeSetState } from './webview-globals';
 import { UnknownDocId } from './shared';
+import { SelContext } from './selection';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function scrollHorizontalSync(selector: string) {
@@ -42,6 +43,7 @@ interface IHexTableState {
     sessionId: string;
     sessionStatus: string;
     baseAddress: bigint;
+    selChangedToggle: boolean;
 }
 
 function getDocStateScrollTop(): number {
@@ -106,12 +108,16 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             sessionId: doc?.sessionId || UnknownDocId,
             sessionStatus: doc?.sessionStatus || UnknownDocId,
             baseAddress: doc?.baseAddress ?? 0n,
-            scrollTop: getDocStateScrollTop()
+            scrollTop: getDocStateScrollTop(),
+            selChangedToggle: true
         };
         // console.log('HexTableVirtual2 ctor()', this.state);
         this.bytesPerRow = doc ? (doc.format === '1-byte' ? 16 : 32) : 16;
         this.maxNumRows = maxNumBytes * this.bytesPerRow;
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
+        SelContext.eventEmitter.addListener('changed', () => {
+            this.setState({ selChangedToggle: !this.state.selChangedToggle });
+        });
         window.addEventListener('resize', this.onResize.bind(this));
     }
 
@@ -257,7 +263,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             }
             const tmp: IHexDataRow = {
                 address: addr,
-                onChange: this.props.onChange
+                onChange: this.props.onChange,
+                selChangedToggle: this.state.selChangedToggle
             };
             items.push(tmp);
             if (ix >= startIndex && ix <= stopIndex) {
@@ -341,6 +348,7 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
                                     height={heightCalc}
                                     width={width}
                                     overscanCount={30}
+                                    itemData={this.state.selChangedToggle}
                                     itemCount={this.state.items.length}
                                     itemSize={this.state.rowHeight}
                                     // setting it to this.state.scrollTop does not work because the upper level components

@@ -12,7 +12,8 @@ import /*
 'recoil';
 import { DualViewDoc, DummyByte, IDualViewDocGlobalEventArg } from './dual-view-doc';
 import { IMemValue, UnknownDocId } from './shared';
-import { hexFmt64 as _hexFmt64 } from './utils';
+import { hexFmt64, hexFmt64 as _hexFmt64 } from './utils';
+import { SelContext } from './selection';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 interface IMemValue32or64 {
@@ -26,6 +27,7 @@ interface IHexCell {
     bytesPerCell: number;
     address: bigint;
     cellInfo: IMemValue | IMemValue32or64;
+    selChangedToggle: boolean;
     onChange?: OnCellChangeFunc;
 }
 
@@ -56,7 +58,8 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         return (
             `hex-cell hex-cell-value hex-cell-value${this.props.bytesPerCell}` +
             (this.state.frozen ? ' hex-cell-value-dirty' : '') +
-            (changed ? ' hex-cell-value-changed' : '')
+            (changed ? ' hex-cell-value-changed' : '') +
+            (SelContext.isSelected(this.props.address) ? ' selected-cell' : '')
         );
     };
 
@@ -210,6 +213,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     private onBlurFunc = this.onBlur.bind(this);
 
     static selectItem(item: any) {
+        return; // Following is bogus
         let range, selection: any;
         if (window.getSelection && document.createRange) {
             selection = window.getSelection();
@@ -224,6 +228,20 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         }
     }
 
+    private onMouseDownFunc = this.onMouseDown.bind(this);
+    private onMouseDown(e: React.MouseEvent) {
+        if (e.buttons & 1) {
+            if (!e.shiftKey) {
+                SelContext.current?.clear();
+            } else {
+                console.log('shift mouse click');
+            }
+            setTimeout(() => {
+                SelContext.current?.setCurrent(this.props.address, e.target as Element);
+            }, 100);
+        }
+    }
+
     render() {
         return (
             <span
@@ -234,6 +252,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
                 onFocus={this.onFocusFunc}
                 onBlur={this.onBlurFunc}
                 onInput={this.onInputFunc}
+                onMouseDown={this.onMouseDownFunc}
             >
                 {this.valueStr()}
             </span>
@@ -337,6 +356,7 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 
 export interface IHexDataRow {
     address: bigint;
+    selChangedToggle: boolean;
     onChange?: OnCellChangeFunc;
     style?: any;
     cls?: string;
@@ -357,6 +377,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private static bytePerWord: 1 | 4 | 8;
     private static byteOrder: number[] = [];
     private static isBigEndian = false;
+    private myRef = React.createRef<HTMLDivElement>();
     constructor(public props: IHexDataRow) {
         super(props);
         const fmt = DualViewDoc.currentDoc?.format;
@@ -459,6 +480,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         this.mountStatus = true;
         await this.getBytes();
+        this.myRef.current && SelContext.current?.addRow(this.props.address, this.myRef.current);
     }
 
     componentWillUnmount() {
@@ -492,7 +514,8 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
 
     render() {
         // console.log(`In HexDataRow.render() ${this.props.address}`);
-        const classNames = 'hex-data-row ' + (this.props.cls || '');
+        const addrStr = hexFmt64(this.props.address);
+        const classNames = `hex-data-row r${addrStr} ` + (this.props.cls || '');
         const values = [];
         const chars = [];
         let key = 1;
@@ -501,6 +524,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             values.push(
                 <HexCellValue
                     bytesPerCell={HexDataRow.bytePerWord}
+                    selChangedToggle={this.props.selChangedToggle}
                     key={key++}
                     address={addr}
                     cellInfo={HexDataRow.bytePerWord === 1 ? this.state.bytes[ix] : this.state.words[ix]}
@@ -512,7 +536,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             }
         }
         return (
-            <div className={classNames} style={this.props.style || ''}>
+            <div className={classNames} style={this.props.style || ''} ref={this.myRef}>
                 <HexCellAddress key={100} address={this.props.address} />
                 {values}
                 <HexCellEmpty key={101} length={1} fillChar='.' cls='hex-cell-invisible' />
