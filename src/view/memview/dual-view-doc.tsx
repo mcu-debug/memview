@@ -232,6 +232,14 @@ export class DualViewDoc {
         return Promise.resolve(ary);
     }
 
+    public getMemoryRaw(): MemPages {
+        return this.memory;
+    }
+
+    public refreshMemoryIfStale(): Promise<any> {
+        return this.memory.refreshMemoryIfStale();
+    }
+
     public static debuggerStatusChanged(
         sessionId: string,
         status: DebugSessionStatusSimple,
@@ -329,7 +337,7 @@ export class DualViewDoc {
         return addr >= this.baseAddress && addr <= this.maxAddress;
     }
 
-    static getDocumentById(id: string) {
+    static getDocumentById(id: string): DualViewDoc | undefined {
         return DualViewDoc.allDocuments[id];
     }
 
@@ -546,7 +554,7 @@ export class DualViewDoc {
             isReadOnly: this.isReadonly
         };
         if (includeMemories) {
-            tmp.memory = this.memory.storeSerializable();
+            tmp.memory = this.memory.getSerializablePages();
         }
         return tmp;
     }
@@ -632,6 +640,10 @@ class MemPages {
         return this.parentDoc.baseAddress;
     }
 
+    public numPages(): number {
+        return this.pages.length;
+    }
+
     createDummyPage(str: string) {
         const tmp: IMemPage = {
             stale: false,
@@ -644,6 +656,18 @@ class MemPages {
         const offset = addr - this.baseAddress;
         const slot = Math.floor(Number(offset) / DualViewDoc.PageSize);
         return slot;
+    }
+
+    public refreshMemoryIfStale(): Promise<any> {
+        const promises = [];
+        let addr = this.baseAddress;
+        for (const page of this.pages) {
+            if (page.stale) {
+                promises.push(this.getValue(addr));
+            }
+            addr += BigInt(DualViewDoc.PageSize);
+        }
+        return Promise.all(promises);
     }
 
     public markAllStale() {
@@ -797,7 +821,7 @@ class MemPages {
         }
     }
 
-    storeSerializable() {
+    public getSerializablePages(): IMemPages {
         const ret: IMemPages = {
             baseAddress: this.baseAddress.toString(),
             pages: this.pages.map((p) => {

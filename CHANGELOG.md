@@ -9,10 +9,13 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
 
-## 0.0.18 - Nov 21, 2022
+## 0.0.18 - Nov 22, 2022
 
 -   You can now use you mouse to select a range of cells using your mouse. A single left-click starts the selection and Shift-left-click will extend the selection
--   You can also copy the values to the system clipboard using the standard keyboard shortcut or the right-click context menu. When pasted into another application/window, the only the hex values are pasted. Sorry, no paste within the viewer yet -- as that requires editing capabilities in this extension.
+-   You can also copy the values to the system clipboard using the standard keyboard shortcut or the right-click context menu. Sorry, no paste within the viewer yet -- as that requires editing capabilities in this extension.
+-   There is new button for the 'Copy' function as well. If you hold the Alt (Windows, Linux) or ⌥ (MacOS) it can copy `all` to clipboard. If the debugger is paused, we will try to refresh any data that may not be visible.
+-   There is a new button for Saving the contents to a file
+-   In all cases (copy to clipboard or file), the data is always saved in byte form regardless of the current view (4-byte or 8-byte)
 
 ## 0.0.17 - Nov 18, 2022
 

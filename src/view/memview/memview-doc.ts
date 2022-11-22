@@ -1,17 +1,18 @@
 import * as vscode from 'vscode';
 import querystring from 'node:querystring';
 import { uuid } from 'uuidv4';
-import { readFileSync } from 'node:fs';
+import * as fs from 'fs';
 import { DocDebuggerStatus, DualViewDoc } from './dual-view-doc';
 import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
-    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged
+    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, UnknownDocId
 } from './shared';
 import { DebuggerTrackerLocal } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { DebugSessionStatus } from 'debug-tracker-vscode';
+import { hexFmt64 } from './utils';
 
 const KNOWN_SCHMES = {
     FILE: 'file',                                            // Only for testing
@@ -72,7 +73,7 @@ export class MemviewDocument implements vscode.CustomDocument {
             this.sessionId = this.uri.authority;
         } else {
             this.sessionId = undefined;
-            const contents = readFileSync(this.uri.fsPath);
+            const contents = fs.readFileSync(this.uri.fsPath);
             this.options.bytes = contents;
             this.options.initialSize = this.options.bytes.length;
             this.options.isFixedSize = true;
@@ -359,11 +360,89 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         this.updateHtmlForInit();
     }
 
+    public dumpAllToClipboard(doc: DualViewDoc): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const lines: string[] = [];
+            this.dumpAll(doc, (line) => {
+                lines.push(line);
+            }).then(() => {
+                vscode.env.clipboard.writeText(lines.join('\n'));
+            }).catch((e) => {
+                console.error('MemView: dumpAll Failed?!?!', e);
+            }).finally(() => {
+                resolve();
+            });
+        });
+    }
+
+    public dumpAllToFile(doc: DualViewDoc): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const opts: vscode.SaveDialogOptions = {
+                filters: {
+                    'Text files': ['*.txt', '*.dat']
+                },
+                saveLabel: 'Save',
+                title: 'Select text file for writing'
+            };
+            vscode.window.showSaveDialog(opts).then((uri) => {
+                if (uri) {
+                    const stream = fs.createWriteStream(uri.fsPath);
+                    stream.on('error', (e) => {
+                        vscode.window.showErrorMessage(`Could not open file name "${uri}" for writing: ${e}`);
+                        resolve();
+                    });
+                    stream.on('ready', () => {
+                        this.dumpAll(doc, (line) => {
+                            stream.write(line);
+                            stream.write('\n');
+                        }).then(() => {
+                            stream.end();
+                        }).catch((e) => {
+                            console.error('MemView: dumpAll Failed?!?!', e);
+                        }).finally(() => {
+                            resolve();
+                        });
+                    });
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    public async dumpAll(doc: DualViewDoc, cb: (line: string) => void) {
+        if (doc.sessionStatus === DocDebuggerStatus.Stopped) {
+            try {
+                // Don't are if we cannot refresh. Dump what we got
+                await doc.refreshMemoryIfStale();
+            }
+            finally { }
+        }
+        const memory = doc.getMemoryRaw();
+        let base = memory.baseAddress;
+        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.PageSize)) {
+            const page = memory.getPage(base);
+            if (page && page.length) {
+                let line: string[] = [hexFmt64(base, false)];
+                let addr = base;
+                for (let ix = 0; ix < page.length; ix++) {
+                    if (line.length === 17) {
+                        cb && cb(line.join(' '));
+                        line = [hexFmt64(addr, false)];
+                        addr += 16n;
+                    }
+                    line.push(page[ix].toString(16).padStart(2, '0'));
+                }
+                (line.length > 1) && cb && cb(line.join(' '));
+            }
+        }
+    }
+
     private handleMessage(msg: any) {
         // console.log('MemViewPanelProvider.onDidReceiveMessage', msg);
         switch (msg?.type) {
             case 'command': {
-                const body: any = msg.body as ICmdBase;
+                const body: ICmdBase = msg.body as ICmdBase;
                 if (!body) { break; }
                 switch (body.type) {
                     case CmdType.GetDebuggerSessions: {
@@ -421,7 +500,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         break;
                     }
                     case CmdType.ButtonClick: {
-                        // const doc = body.docId && body.docId !== UnknownDocId ? DualViewDoc.getDocumentById(body.docId) : undefined;
+                        const doc = body.docId && body.docId !== UnknownDocId ? DualViewDoc.getDocumentById(body.docId) : undefined;
                         const button = (body as ICmdButtonClick).button;
                         switch (button) {
                             case 'close': {
@@ -441,6 +520,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             case 'refresh': {
                                 DualViewDoc.markAllDocsStale();
                                 this.updateHtmlForInit();
+                                break;
+                            }
+                            case 'copy-all-to-clipboard': {
+                                doc && this.dumpAllToClipboard(doc);
+                                break;
+                            }
+                            case 'copy-all-to-file': {
+                                doc && this.dumpAllToFile(doc);
                                 break;
                             }
                         }
@@ -683,7 +770,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             baseAddressStale: false,
             isCurrentDoc: true,
         };
-        const buf = readFileSync(path);
+        const buf = fs.readFileSync(path);
         DualViewDoc.init(new mockDebugger(buf, 0n));
         new DualViewDoc(props);
         MemViewPanelProvider.Provider.updateHtmlForInit();

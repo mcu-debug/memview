@@ -237,8 +237,6 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         if (e.buttons & 1) {
             if (!e.shiftKey) {
                 SelContext.current?.clear();
-            } else {
-                console.log('shift mouse click');
             }
             SelContext.current?.setCurrent(this.props.address, e.target as Element);
         }
@@ -487,7 +485,6 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         this.mountStatus = true;
         await this.getBytes();
-        this.myRef.current && SelContext.current?.addRow(this.props.address, this);
     }
 
     componentWillUnmount() {
@@ -495,7 +492,6 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             DualViewDoc.globalEventEmitter.removeListener('any', this.onGlobalEventFunc);
             // console.log(`In HexDataRow.componentWillUnmount() ${this.props.address}`);
             this.mountStatus = false;
-            this.myRef.current && SelContext.current?.removeRow(this.props.address);
         }
     }
 

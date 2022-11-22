@@ -18,6 +18,7 @@ import {
     RowFormatType,
     UnknownDocId
 } from './shared';
+import { SelContext } from './selection';
 
 export interface IMemViewPanelProps {
     junk: string;
@@ -151,6 +152,20 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
         }
     }
 
+    private onClickCopyFunc = this.onClickCopy.bind(this);
+    private onClickCopy(ev: React.MouseEvent) {
+        if (ev.altKey) {
+            vscodePostCommandNoResponse(this.createCmd('copy-all-to-clipboard'));
+        } else {
+            SelContext.current?.copyToClipboard();
+        }
+    }
+
+    private onClickCopyToFileFunc = this.onClickCopyToFile.bind(this);
+    private onClickCopyToFile(_ev: React.MouseEvent) {
+        vscodePostCommandNoResponse(this.createCmd('copy-all-to-file'));
+    }
+
     render() {
         // console.log('In MemViewToolbar.render');
         const docItems = [];
@@ -174,6 +189,10 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             onDone: this.onEditPropsDoneFunc
         };
         let key = 0;
+        const copyHelp =
+            'Copy to clipboard.\nHold ' +
+            (navigator.platform.startsWith('Mac') ? '⌥' : 'Alt') +
+            ' for Copy All to clipboard';
         return (
             <div className='toolbar' style={{ width: 'auto' }}>
                 <VSCodeDropdown
@@ -196,6 +215,17 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
                     onClick={this.onClickEditPropFunc}
                 >
                     <span className='codicon codicon-edit'></span>
+                </VSCodeButton>
+                <VSCodeButton key={key++} appearance='icon' title={copyHelp} onClick={this.onClickCopyFunc}>
+                    <span className='codicon codicon-copy'></span>
+                </VSCodeButton>
+                <VSCodeButton
+                    key={key++}
+                    appearance='icon'
+                    title='Save to file...'
+                    onClick={this.onClickCopyToFileFunc}
+                >
+                    <span className='codicon codicon-file-binary'></span>
                 </VSCodeButton>
                 <VSCodeButton
                     key={key++}

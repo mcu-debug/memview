@@ -124,7 +124,7 @@ export interface ICmdClientState extends ICmdBase {
     state: { [key: string]: any };
 }
 
-export type CmdButtonName = 'close' | 'new' | 'select' | 'refresh' | 'settings';
+export type CmdButtonName = 'close' | 'new' | 'select' | 'refresh' | 'settings' | 'copy-all-to-clipboard' | 'copy-all-to-file';
 export interface ICmdButtonClick extends ICmdBase {
     button: CmdButtonName;
 }

@@ -1,6 +1,6 @@
-import { DualViewDoc } from './dual-view-doc';
+import { DocDebuggerStatus, DualViewDoc, DummyByte } from './dual-view-doc';
 import events from 'events';
-import { HexCellValue, HexDataRow } from './hex-elements';
+import { bigIntMax, bigIntMin, hexFmt64 } from './utils';
 
 export class SelRange {
     constructor(readonly start: bigint, readonly end: bigint) {}
@@ -8,7 +8,6 @@ export class SelRange {
 export class SelContext {
     public static current: SelContext | undefined;
     public static eventEmitter = new events.EventEmitter();
-    private addrToRowNode = new Map<bigint, HexDataRow>();
     public range: SelRange | undefined;
     public current: bigint | undefined;
     constructor() {
@@ -63,14 +62,6 @@ export class SelContext {
         SelContext.eventEmitter.emit('changed', this.range);
     }
 
-    public addRow(addr: bigint, row: HexDataRow) {
-        this.addrToRowNode.set(addr, row);
-    }
-
-    public removeRow(addr: bigint) {
-        this.addrToRowNode.delete(addr);
-    }
-
     public clear() {
         if (!this.range || this.range.start !== this.range.end) {
             SelContext.eventEmitter.emit('changed', undefined);
@@ -83,44 +74,65 @@ export class SelContext {
         }
     }
 
-    public copyToClipboard() {
+    public async copyToClipboard() {
         const range = this.range;
         const doc = DualViewDoc.currentDoc;
         if (range && doc) {
-            const isByte = doc.format === '1-byte';
-            const wSize = isByte ? 1n : doc.format === '4-byte' ? 4n : 8n;
-            const rSize = isByte ? 16n : 32n;
-            let addr = (range.start / rSize) * rSize;
-            const text: string[] = [];
-            while (addr <= range.end) {
-                const row = this.addrToRowNode.get(addr);
-                if (!row) {
-                    break;
+            if (range.start > doc.maxAddress) {
+                return;
+            }
+            const refreshPage = async (addr: bigint) => {
+                try {
+                    await DualViewDoc.getCurrentDocByte(addr); // This will refresh if debugger is stopped
+                } catch {}
+            };
+            const pageSize = BigInt(DualViewDoc.PageSize);
+            let addr = (range.start / 16n) * 16n;
+            await refreshPage(addr);
+            const lines: string[] = [];
+            let done = false;
+            while (!done && addr < range.end && addr < doc.maxAddress) {
+                const row = DualViewDoc.getRowUnsafe(addr);
+                let ix = 0;
+                while (addr < range.start) {
+                    addr++;
+                    ix++;
                 }
-                const data = row.getRowValues();
-                if (text.length) {
-                    text.push('x');
-                }
-                for (const val of data) {
-                    if (addr < range.start) {
-                    } else if (addr > range.end) {
+                const line: string[] = [hexFmt64(addr, false)];
+                while (ix < row.length && addr < range.end) {
+                    const val = row[ix++].cur;
+                    if (val < 0) {
+                        done = true;
                         break;
-                    } else {
-                        text.push(HexCellValue.formatValue(isByte, val));
                     }
-                    addr += wSize;
+                    line.push(val.toString(16).padStart(2, '0'));
+                    addr++;
+                }
+                if (line.length > 1) {
+                    lines.push(line.join(' '));
+                }
+                if (!done && addr < range.end && addr === (addr / pageSize) * pageSize) {
+                    await refreshPage(addr);
                 }
             }
-            const str = text.join(' ').replace(/ x /g, '\n');
-            navigator.clipboard.writeText(str);
+            const str = lines.join('\n');
+            if (str) {
+                // The webview also does a copy of the single cell we are now focussed on. Delay our
+                // copy just a little bit so ours goes last. Wish I knew how to work around this
+                // This becomes especially true, if you visit a breakpoint while debugging the copy function
+                // as it would remove focus from the memory-vew. navigator.clipboard.writeText needs
+                // the document to have the focus.
+                setTimeout(() => {
+                    navigator.clipboard.writeText(str).then(
+                        () => {
+                            // console.log('Worked! navigator.clipboard.writeText');
+                        },
+                        (e) => {
+                            console.error('FAILED! navigator.clipboard.writeText', e);
+                        }
+                    );
+                }, 5);
+            }
         }
     }
-}
-
-function bigIntMin(a: bigint, b: bigint) {
-    return a < b ? a : b;
-}
-
-function bigIntMax(a: bigint, b: bigint) {
-    return a > b ? a : b;
 }

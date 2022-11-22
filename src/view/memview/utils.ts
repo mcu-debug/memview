@@ -14,7 +14,15 @@ export class Timekeeper {
     }
 }
 
-export function hexFmt64(v: bigint) {
-    const str = '0x' + v.toString(16).padStart(16, '0');
+export function hexFmt64(v: bigint, doPrefix = true) {
+    const str = (doPrefix ? '0x' : '') + v.toString(16).padStart(16, '0');
     return str;
+}
+
+export function bigIntMin(a: bigint, b: bigint) {
+    return a < b ? a : b;
+}
+
+export function bigIntMax(a: bigint, b: bigint) {
+    return a > b ? a : b;
 }
