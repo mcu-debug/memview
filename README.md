@@ -22,6 +22,7 @@ This was originally conceived as part of the [Cortex-Debug](https://github.com/M
 -   Coming soon: Paste. Selection and copy to clipboard already available.
 -   Coming soon: memory editing. You can edit now but there is capability to commit changes to program memory.
 -   Coming soon: Ability to host the window either in the 'Panel' area (alongside Debug Console) or in the editor area.
+-   Coming soon: We have an issue pending with VSCode for the ability to launch the memory viewer from withing the Variable/Watch Windows. See https://github.com/microsoft/vscode/issues/155597 and **submit your vote**.
 
 Following customizations exist for a memory view<br>
 <img src="./resources/vew-props.png" width="400">
