@@ -14,7 +14,7 @@ This was originally conceived as part of the [Cortex-Debug](https://github.com/M
 
 -   Infinite scroll capable. Currently, artificially limited to 4MB and this may change.
     -   Very little data is fetched depending on what is being viewed and more is loaded as you scroll.
--   1/4/8 byte views. Decoded bytes are only shown in 1-byte mode.
+-   1/4/8 byte views. Decoded bytes are only shown in 1-byte mode. Saving to clipboard/file is always done in 1-byte more
 -   Persistent views that survive multiple debug sessions and VSCode restarts.
 -   Visually tell which bytes were modified since last 'resume' of a program. Changed cells (byte, word or double-word) are highlighted.
 -   One panel hosts multiple views that you can switch between. This was a deliberate choice.
