@@ -413,7 +413,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
     public async dumpAll(doc: DualViewDoc, cb: (line: string) => void) {
         if (doc.sessionStatus === DocDebuggerStatus.Stopped) {
             try {
-                // Don't are if we cannot refresh. Dump what we got
+                // Don't care if we cannot refresh. Dump what we got
                 await doc.refreshMemoryIfStale();
             }
             finally { }
@@ -423,13 +423,13 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.PageSize)) {
             const page = memory.getPage(base);
             if (page && page.length) {
-                let line: string[] = [hexFmt64(base, false)];
                 let addr = base;
+                let line: string[] = [hexFmt64(addr, false)];
                 for (let ix = 0; ix < page.length; ix++) {
                     if (line.length === 17) {
                         cb && cb(line.join(' '));
-                        line = [hexFmt64(addr, false)];
                         addr += 16n;
+                        line = [hexFmt64(addr, false)];
                     }
                     line.push(page[ix].toString(16).padStart(2, '0'));
                 }

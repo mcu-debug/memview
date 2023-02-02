@@ -9,6 +9,11 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
 
+## 0.0.19 - Feb 2, 2022
+
+-   Experimental: Added Rust Probe Debugger to the list of debuggers supported. https://github.com/probe-rs/probe-rs/tree/master/debugger
+-   Fix [Issue#10 Misaligned rows when saving memory to file](https://github.com/mcu-debug/memview/issues/10)
+
 ## 0.0.18 - Nov 22, 2022
 
 -   You can now use you mouse to select a range of cells using your mouse. A single left-click starts the selection and Shift-left-click will extend the selection

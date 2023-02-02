@@ -115,6 +115,7 @@ export class SelContext {
                     await refreshPage(addr);
                 }
             }
+            lines.length && lines.push('');
             const str = lines.join('\n');
             if (str) {
                 // The webview also does a copy of the single cell we are now focussed on. Delay our
