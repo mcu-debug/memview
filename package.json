@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.19",
+    "version": "0.0.20",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -13,7 +13,7 @@
         "url": "https://github.com/mcu-debug/memview/issues"
     },
     "engines": {
-        "vscode": "^1.69.0"
+        "vscode": "^1.75.0"
     },
     "categories": [
         "Other"
@@ -35,9 +35,6 @@
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
         "onDebugResolve:cspy",
-        "onCommand:mcu-debug.memory-view.hello",
-        "onCommand:mcu-debug.memory-view.toggleMemoryView",
-        "onCommand:mcu-debug.memory-view.addMemoryView",
         "onCommand:cu-debug.memory-view.uriTest",
         "onWebviewPanel:memory-view.memoryView",
         "onUri"
@@ -138,7 +135,7 @@
         "@types/react-virtualized-auto-sizer": "^1.0.1",
         "@types/react-window": "^1.8.5",
         "@types/react-window-infinite-loader": "^1.0.6",
-        "@types/vscode": "^1.69.0",
+        "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^5.31.0",
         "@typescript-eslint/parser": "^5.31.0",
         "@vscode/test-electron": "^2.1.5",
@@ -159,7 +156,7 @@
         "@vscode/webview-ui-toolkit": "^1.0.0",
         "buffer": "^6.0.3",
         "clsx": "^1.2.1",
-        "debug-tracker-vscode": "^0.0.11",
+        "debug-tracker-vscode": "^0.0.14",
         "events": "^3.3.0",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
