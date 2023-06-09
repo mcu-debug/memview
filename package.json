@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.20",
+    "version": "0.0.21",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -122,7 +122,9 @@
         "compile": "tsc -noEmit && node .esbuild.config.js --analyze",
         "lint": "eslint src --ext ts",
         "watch": "node .esbuild.config.js --watch --analyze",
-        "test": "node ./src/test/runTest.js"
+        "test": "node ./src/test/runTest.js",
+        "package": "node ./release.js --package",
+        "publish": "node ./release.js --publish --vsx-also"
     },
     "devDependencies": {
         "@faker-js/faker": "^7.4.0",

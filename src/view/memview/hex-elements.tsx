@@ -331,7 +331,7 @@ export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
 
     let key = 2;
     for (let ix = 0; ix < bytesInRow; ix += bytesPerCell) {
-        addrCells.push(<HexCellValueHeader key={key++} value={ix % 16} bytesPerCell={bytesPerCell} />);
+        addrCells.push(<HexCellValueHeader key={key++} value={ix % bytesInRow} bytesPerCell={bytesPerCell} />);
     }
     const decodedTextCells: JSX.Element[] = [];
     if (bytesPerCell === 1) {
