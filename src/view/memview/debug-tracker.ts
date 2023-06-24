@@ -132,7 +132,7 @@ export class DebugTrackerFactory {
         DebugTrackerFactory.context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(this.settingsChanged.bind(this))
         );
-        this.updateTrackedDebuggersFromSettings();
+        this.updateTrackedDebuggersFromSettings(false);
         this.subscribeToTracker();
     }
 
@@ -142,19 +142,22 @@ export class DebugTrackerFactory {
 
     private settingsChanged(e: vscode.ConfigurationChangeEvent) {
         if (e.affectsConfiguration('memory-view.trackDebuggers')) {
-            this.updateTrackedDebuggersFromSettings();
+            this.updateTrackedDebuggersFromSettings(true);
         }
     }
 
-    private updateTrackedDebuggersFromSettings() {
+    private updateTrackedDebuggersFromSettings(prompt: boolean) {
         const config = vscode.workspace.getConfiguration('memory-view', null);
         const prop = config.get('trackDebuggers', []);
         if (prop && Array.isArray(prop)) {
             for (let ix = 0; ix < prop.length; ix++) {
                 if (!TrackedDebuggers.includes(prop[ix])) {
                     TrackedDebuggers.push(prop[ix]);
-                    // TODO: add debugger to the subscription
-                    // DebugTrackerFactory.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(prop[ix], this));
+                    // TODO: add debugger to the subscription dynamically. For now, we just notify user
+                    if (prompt) {
+                        vscode.window.showInformationMessage('Settings changed for tracked debuggers. You have to Reload this window for this to take effect');
+                        prompt = false;
+                    }
                 }
             }
         }

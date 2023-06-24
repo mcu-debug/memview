@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.21",
+    "version": "0.0.22",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -99,7 +99,7 @@
         },
         "configuration": {
             "type": "object",
-            "title": "memory-view",
+            "title": "MemoryView",
             "properties": {
                 "memory-view.showMemoryPanel": {
                     "type": "boolean",
@@ -107,12 +107,19 @@
                     "description": "Show MEMORY memory panel"
                 },
                 "memory-view.memoryViewLocation": {
+                    "type": "string",
                     "enum": [
                         "panel",
                         "editor"
                     ],
                     "default": "panel",
                     "description": "Only 'panel' has been implemented. `editor` shows memory views in the Editors area. Default is in the Panels area along with the `Debug Console`"
+                },
+                "memory-view.trackDebuggers": {
+                    "type": "array",
+                    "items": "string",
+                    "default": [],
+                    "description": "List (array) of additional debuggers to track besides the default ones. Reload of window required"
                 }
             }
         }
