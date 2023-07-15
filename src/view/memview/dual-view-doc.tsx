@@ -505,7 +505,8 @@ export class DualViewDoc {
             debug && console.log('emitGlobalEvent Emitting event', arg);
             DualViewDoc.globalEventEmitter.emit(arg.type, arg);
             DualViewDoc.globalEventEmitter.emit('any', arg);
-        }, 100); // Is this enough delay?!?!?
+        }, 1); // Is this enough delay?!?!? If the delay is too much, we miss status changes totally.
+        // We should try to remove the debounce stuff completely
     }
 
     static getBasicDocumentsList(): IWebviewDocInfo[] {

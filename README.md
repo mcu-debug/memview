@@ -32,7 +32,7 @@ We would like to eventually launch memory views from the Variables and Watch win
 ## Usage (Manually within VSCode)
 
 -   Use the Command Palette and select `MemoryView: Add new memory view...` while a debug session is paused.
--   It will ask you for an address or a C-style expression that can be interpreted by the debugger (GDB or othe) to return an address. In expressions, try to use global variables or else things might not work when we try to refresh the view
+-   It will ask you for an address or a C-style expression that can be interpreted by the debugger (GDB or other) to return an address. In expressions, try to use global variables or else things might not work when we try to refresh the view
 -   When successfully attached, a `MEMORY` tab will appear in the Panel area
 -   All memory requests are aligned to a 16 byte boundary. Memory is fetched and rendered in 512B chunks as needed. May change in the future
 -   NOTE: Editing features are not yet ready for use. You can edit but the edits will not be saved to your program

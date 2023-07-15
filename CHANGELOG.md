@@ -9,6 +9,11 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
 
+## 0.0.23 - Jul 15, 2023
+
+-   [Refresh not done when a breakpoint is HIT #16](https://github.com/mcu-debug/memview/issues/16) Memory was not being updated when the transition from `stopped` to running to `stopped` happened very fast. We never noticed `running` transition and it looked like we went from stopped to stopped. Thus, no auto-refresh occurred. Generally not a problem with MCUs but was an issue with native code running on fast computers. The debounce existed because the React framework could not handle fast transitions and caused shimmering/flickering. If you see the shimmering, please let us know. So, this fix should be considered experimental.
+-   Good news is that we now have a few non-embedded users for this extension.
+
 ## 0.0.22 - Jun 24, 2023
 
 -   Added setting `memory-view.trackDebuggers` to add additional debuggers to track.
