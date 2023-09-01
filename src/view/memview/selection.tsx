@@ -91,7 +91,7 @@ export class SelContext {
             await refreshPage(addr);
             const lines: string[] = [];
             let done = false;
-            while (!done && addr < range.end && addr < doc.maxAddress) {
+            while (!done && addr <= range.end && addr < doc.maxAddress) {
                 const row = DualViewDoc.getRowUnsafe(addr);
                 let ix = 0;
                 while (addr < range.start) {
@@ -99,7 +99,7 @@ export class SelContext {
                     ix++;
                 }
                 const line: string[] = [hexFmt64(addr, false)];
-                while (ix < row.length && addr < range.end) {
+                while (ix < row.length && addr <= range.end) {
                     const val = row[ix++].cur;
                     if (val < 0) {
                         done = true;
@@ -111,7 +111,7 @@ export class SelContext {
                 if (line.length > 1) {
                     lines.push(line.join(' '));
                 }
-                if (!done && addr < range.end && addr === (addr / pageSize) * pageSize) {
+                if (!done && addr <= range.end && addr === (addr / pageSize) * pageSize) {
                     await refreshPage(addr);
                 }
             }

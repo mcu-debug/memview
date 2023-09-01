@@ -11,6 +11,11 @@ Please note that we are still in Preview mode. For those using the API, this can
 
 ## 0.0.23 - Jul 15, 2023
 
+-   In some cases address expressions were not being evaluated properly
+-   When copying, the last byte sometimes did not get copied
+
+## 0.0.23 - Jul 15, 2023
+
 -   [Refresh not done when a breakpoint is HIT #16](https://github.com/mcu-debug/memview/issues/16) Memory was not being updated when the transition from `stopped` to running to `stopped` happened very fast. We never noticed `running` transition and it looked like we went from stopped to stopped. Thus, no auto-refresh occurred. Generally not a problem with MCUs but was an issue with native code running on fast computers. The debounce existed because the React framework could not handle fast transitions and caused shimmering/flickering. If you see the shimmering, please let us know. So, this fix should be considered experimental.
 -   Good news is that we now have a few non-embedded users for this extension.
 

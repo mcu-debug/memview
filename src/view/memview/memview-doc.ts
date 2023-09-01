@@ -736,6 +736,11 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 }
                 if (result.result) {
                     let res: string = result.result.trim().toLocaleLowerCase();
+                    if (isHexOrDec(res)) {
+                        resolve(res);
+                        return;
+                    }
+                    /* Sometimes, gdb does not give a straight hex or decimal number. For addresses, it may suffix the value with other stuff */
                     if (res.startsWith('0x')) {
                         const ary = res.match(/^0x[0-9a-f]+/);
                         if (ary) {
@@ -744,11 +749,14 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             return;
                         }
                     }
+                    vscode.window.showInformationMessage(`Memory View: Address '${expr}' evaluated to ${res} which is not a constant`);
                     reject(new Error(`Expression '${expr}' failed to evaluate to a proper pointer value. Result: '${res}'`));
                 } else {
+                    vscode.window.showInformationMessage(`Memory View: Failed to evaluate address '${expr}'`);
                     reject(new Error(`Expression '${expr}' failed to yield a proper result. Got ${JSON.stringify(result)}`));
                 }
             }), (e: any) => {
+                vscode.window.showInformationMessage(`Memory View: Failed to evaluate address '${expr}'`);
                 reject(new Error(`Expression '${expr}' threw an error. ${JSON.stringify(e)}`));
             };
         });
