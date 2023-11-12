@@ -9,7 +9,7 @@ import {
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
     ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, UnknownDocId
 } from './shared';
-import { DebuggerTrackerLocal } from './debug-tracker';
+import { DebuggerTrackerLocal, ITrackedDebugSession } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { DebugSessionStatus } from 'debug-tracker-vscode';
 import { hexFmt64 } from './utils';
@@ -205,12 +205,20 @@ export class MemviewDocumentProvider implements vscode.CustomEditorProvider {
     }
 }
 
+export interface IFindByUriReturn {
+    doc: DualViewDoc | undefined,
+    props: IWebviewDocXfer,
+    session: vscode.DebugSession | undefined,
+    sessionInfo: ITrackedDebugSession,
+    expr: string | undefined
+}
+
 export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.UriHandler {
     private static context: vscode.ExtensionContext;
     private static readonly viewType = 'memory-view.memoryView';
     private static readonly stateVersion = 1;
     private static readonly stateKeyName = 'documents';
-    private static Provider: MemViewPanelProvider;
+    public static Provider: MemViewPanelProvider;
     private webviewView: vscode.WebviewView | undefined;
 
     public static register(context: vscode.ExtensionContext) {
@@ -246,7 +254,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         DebuggerTrackerLocal.eventEmitter.on('any', this.debuggerStatusChanged.bind(this));
     }
 
-    handleUri(uri: vscode.Uri): vscode.ProviderResult<void> {
+    public findByUri(uri: vscode.Uri): IFindByUriReturn {
         const options = querystring.parse(uri.query);
         const cvt = (value: string | string[] | undefined): string | undefined => {
             return value === undefined ? undefined : (Array.isArray(value) ? value.join(',') : value);
@@ -263,7 +271,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         const path = trimSlashes(decodeURIComponent(uri.path ?? ''));
         const expr = cvt(options.expr) || cvt(options.memoryReference);
         if (!expr && !path) {
-            return Promise.reject(new Error('MemView URI handler: No expression or path provided'));
+            throw new Error('MemView URI handler: No expression or path provided');
         }
 
         let session = vscode.debug.activeDebugSession;
@@ -300,28 +308,49 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 DualViewDoc.setCurrentDoc(existing.docId);
                 this.updateHtmlForInit();
             }
-            return;
         }
+        return {
+            doc: existing,
+            props: props,
+            session: session,
+            sessionInfo: sessionInfo,
+            expr: expr
+        };
+    }
 
-        if (sessionInfo && sessionInfo.status === DebugSessionStatus.Stopped) {
-            MemViewPanelProvider.getExprResult(sessionInfo.session, props.expr).then((addr) => {
-                props.baseAddressStale = false;
-                props.startAddress = addr;
+    public handleUri(uri: vscode.Uri): vscode.ProviderResult<void> {
+        try {
+            const existing = MemViewPanelProvider.Provider.findByUri(uri);
+            if (existing.doc) {
+                return Promise.resolve();
+            }
+            const props = existing.props;
+            const expr = existing.expr;
+            if (existing.sessionInfo && existing.sessionInfo.status === DebugSessionStatus.Stopped) {
+                MemViewPanelProvider.getExprResult(existing.sessionInfo.session, props.expr).then((addr) => {
+                    props.baseAddressStale = false;
+                    props.startAddress = addr;
+                    new DualViewDoc(props);
+                    MemViewPanelProvider.Provider.showPanel();
+                    return Promise.resolve();
+                }).catch((e) => {
+                    vscode.window.showErrorMessage(`Error: Bad expression in Uri '${expr}'. ${e}`);
+                    return Promise.reject(new Error(`MemView URI handler: Expression ${expr} failed to evaluate: ${e}`));
+                });
+            } else {
+                let msg = `MemView URI handler: New view for ${props.expr} added. It will have contents updated when program is paused or started.`;
+                if (DualViewDoc.currentDoc) {       // There is already one!
+                    props.isCurrentDoc = false;
+                    msg += ' You will have to change the current view manually since there is already a view displayed';
+                }
+                vscode.window.showInformationMessage(msg);
                 new DualViewDoc(props);
                 MemViewPanelProvider.Provider.showPanel();
-            }).catch((e) => {
-                vscode.window.showErrorMessage(`Error: Bad expression in Uri '${expr}'. ${e}`);
-                return Promise.reject(new Error(`MemView URI handler: Expression ${expr} failed to evaluate: ${e}`));
-            });
-        } else {
-            let msg = `MemView URI handler: New view for ${props.expr} added. It will have contents updated when program is paused or started.`;
-            if (DualViewDoc.currentDoc) {       // There is already one!
-                props.isCurrentDoc = false;
-                msg += ' You will have to change the current view manually since there is already a view displayed';
+                return Promise.resolve();
             }
-            vscode.window.showInformationMessage(msg);
-            new DualViewDoc(props);
-            MemViewPanelProvider.Provider.showPanel();
+        }
+        catch (e) {
+            return Promise.reject(e);
         }
     }
 

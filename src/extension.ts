@@ -128,8 +128,87 @@ export class MemViewExtension {
                     vscode.window.showErrorMessage('Cannot execute this command as the debug-tracker-vscode extension did not connect properly');
                 }
             }),
-            vscode.workspace.onDidChangeConfiguration(this.onSettingsChanged.bind(this))
+            vscode.workspace.onDidChangeConfiguration(this.onSettingsChanged.bind(this)),
+
+            /**
+             * HACK: I wish there was a way to detect when a new custom editor or a webview opens. We just monitor any changes
+             * in tabs ans scan sor newly opened stuff. Please let me know if there is an alternate API
+             */
+            vscode.window.tabGroups.onDidChangeTabs(this.tabsChanged.bind(this))
         );
+    }
+
+    protected async tabsChanged(ev: vscode.TabChangeEvent) {
+        if (!vscode.debug.activeDebugSession || !ev.opened || (ev.opened.length === 0)) {
+            return;
+        }
+        const config = vscode.workspace.getConfiguration('memory-view', null);
+        const trackingAllowed = config?.get('tracking.duplicateDebuggerMemoryViews', true);
+        const trackAllowedSilent = config?.get('tracking.duplicateDebuggerMemoryViewsSilently', false);
+        const closeHexEditorAfterDuplicating = config?.get('tracking.closeHexEditorAfterDuplicating', true);
+        if (trackingAllowed || trackAllowedSilent) {
+            for (const tab of ev.opened) {
+                const tabType = tab.input as any;
+                const viewType = tabType?.viewType as string;
+                const origUri = tabType?.uri as vscode.Uri;
+                if (origUri && (viewType === 'hexEditor.hexedit') && (origUri.scheme === 'vscode-debug-memory')) {
+                    // console.log('Tab: ', tab.label, origUri.toString());
+                    const regEx = /\/(.*)\//;
+                    const match = regEx.exec(origUri.path);
+                    if (match) {
+                        const memRef = match[1];
+                        const options: MemviewUriOptions = {
+                            expr: memRef
+                        };
+                        const newUri = vscode.Uri.from({
+                            scheme: vscode.env.uriScheme,
+                            authority: 'mcu-debug.memory-view',
+                            path: '/' + encodeURIComponent(memRef),
+                            query: querystring.stringify(options as any)
+                        });
+                        const existing = MemViewPanelProvider.Provider.findByUri(newUri);
+                        if (!existing.doc) {
+                            if (trackAllowedSilent) {
+                                try {
+                                    await MemViewPanelProvider.Provider.handleUri(newUri);
+                                    if (closeHexEditorAfterDuplicating) {
+                                        try {
+                                            const newItem = MemViewPanelProvider.Provider.findByUri(newUri);
+                                            if (newItem.doc) {
+                                                vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+                                            }
+                                        }
+                                        catch (e) {
+                                            // Do nothing
+                                        }
+                                    }
+                                }
+                                catch (e) {
+                                    vscode.window.showErrorMessage(`newMemoryView failed: ${e}`);
+                                }
+                            } else {
+                                // This will cause a prompt by VSCode
+                                vscode.env.openExternal(newUri).then((success: boolean) => {
+                                    if (success) {
+                                        // console.log(`Operation URI open: success=${success}`);
+                                        vscode.window.showInformationMessage('Completed (hopefully) duplicating the HexEditor window. You can change our extension settings, to do this silently. And, optionally close the HexEditor');
+                                        if (closeHexEditorAfterDuplicating) {
+                                            vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+                                        }
+                                    } else {
+                                        vscode.window.showInformationMessage('Failed to duplicate HexEditor window. Unknown reason. Try the silent method in this extension settings');
+                                    }
+                                }), ((e: any) => {
+                                    console.error(e);
+                                });
+                            }
+                        } else if (closeHexEditorAfterDuplicating) {
+                            vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

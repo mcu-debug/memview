@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.24",
+    "version": "0.0.25",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -120,6 +120,21 @@
                     "items": "string",
                     "default": [],
                     "description": "List (array) of additional debuggers to track besides the default ones. Reload of window required"
+                },
+                "memory-view.tracking.duplicateDebuggerMemoryViews": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Track creation of new memory windows and duplicate it as a memore-view. VSCode uses their HexEditor and we provide an alternative. You may see a prompt by VSCode (not us) to allow our view to be created. If you trust our extension, you can enable the `trackDebuggerMemoryViewsSilent` setting so, you will not see this prompt"
+                },
+                "memory-view.tracking.duplicateDebuggerMemoryViewsSilently": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Track creation of new memory windows and duplicate it as a memore-view. VSCode uses their HexEditor and we provide an alternative. This will happen silently and faster"
+                },
+                "memory-view.tracking.closeHexEditorAfterDuplicating": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "This will auto-close the default VSCode HexEditor view after duplicating it as a a memory view with this extension. Warning: In rare cases, it may close the wrong window"
                 }
             }
         }

@@ -8,6 +8,8 @@ Our goal is to provide a good memory viewer, editing memory is lower in priority
 
 ![screenshot](./resources/screenshot.png)
 
+VSCode provides a mechanism to launch a memory visualizer for certain types of items in Variables and Watch. Generally most C/C++ debuggers provide a memory-reference for pointers. By default, VSCode uses its own `HexEditor`. If you hover on items that are pointers, you will see a special button to launch the `HexEditor`. There is no user setting to change which editor/visualizer to use. It is hardcoded. As a temporary (and experimental) workaround, we can duplicate the `HexEditor` view to one of our memory windows. We can do this silently or with a prompt (default). We can optionally (default false) also close the `HexEditor` for you. Please review the Memory-view Tracking settings in VSCode Settings. Give us feedback if you find this as annoying, helpful, issues, etc. Please refer to https://github.com/mcu-debug/memview/issues/25
+
 ## Features
 
 This was originally conceived as part of the [Cortex-Debug](https://github.com/Marus/cortex-debug) extension. But I decided to make it a stand-alone extension so it can be useful for other debuggers. The design thoughts and goals are [documented here](https://github.com/Marus/cortex-debug/wiki/Memory-Viewer)
