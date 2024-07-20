@@ -76,7 +76,7 @@ export interface IMemValue {
     inRange: boolean;
 }
 
-export type RowFormatType = '1-byte' | '4-byte' | '8-byte';
+export type RowFormatType = '1-byte' | '2-byte' | '4-byte' | '8-byte';
 export type EndianType = 'little' | 'big';
 
 export interface IModifiableProps {

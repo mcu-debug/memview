@@ -17,9 +17,9 @@ import { SelContext } from './selection';
 
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 export type OnSelChangedFunc = (address: bigint) => void;
-export type CellInfoType = IMemValue | IMemValue32or64;
+export type CellInfoType = IMemValue | IMemValue16or32or64;
 
-interface IMemValue32or64 {
+interface IMemValue16or32or64 {
     cur: bigint;
     orig: bigint;
     changed: boolean;
@@ -96,7 +96,7 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
         if (isByte) {
             return cellInfo.cur >= 0 ? hexValuesLookup[((cellInfo as IMemValue).cur >>> 0) & 0xff] : '~~';
         } else {
-            const info = cellInfo as IMemValue32or64;
+            const info = cellInfo as IMemValue16or32or64;
             const value = info.cur;
             const str = info.invalid
                 ? '~'.padStart(this.maxChars, '~')
@@ -324,7 +324,7 @@ export interface IHexHeaderRow {
 
 export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
     const fmt = DualViewDoc.currentDoc?.format;
-    const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
+    const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
     const classNames = `hex-header-row scrollHorizontalSync ${props.cls || ''}`;
     const addrCells: JSX.Element[] = [];
     const bytesInRow = bytesPerCell === 1 ? 16 : 32;
@@ -365,7 +365,7 @@ export interface IHexDataRow {
 
 interface IHexDataRowState {
     bytes: IMemValue[];
-    words: IMemValue32or64[];
+    words: IMemValue16or32or64[];
 }
 
 export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
@@ -375,7 +375,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
     private bytesInRow = 16;
-    private static bytePerWord: 1 | 4 | 8;
+    private static bytePerWord: 1 | 2 | 4 | 8;
     private static byteOrder: number[] = [];
     private static isBigEndian = false;
     private myRef = React.createRef<HTMLDivElement>();
@@ -383,7 +383,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         super(props);
         const fmt = DualViewDoc.currentDoc?.format;
         if (HexDataRow.byteOrder.length === 0) {
-            HexDataRow.bytePerWord = fmt === '1-byte' ? 1 : fmt === '4-byte' ? 4 : 8;
+            HexDataRow.bytePerWord = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
             HexDataRow.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
             if (HexDataRow.isBigEndian) {
                 for (let ix = 0; ix < HexDataRow.bytePerWord; ix++) {
@@ -406,8 +406,8 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
         };
     }
 
-    private convertToWords(bytes: IMemValue[]): IMemValue32or64[] {
-        const ret: IMemValue32or64[] = [];
+    private convertToWords(bytes: IMemValue[]): IMemValue16or32or64[] {
+        const ret: IMemValue16or32or64[] = [];
         if (HexDataRow.bytePerWord === 1) {
             return ret;
         }

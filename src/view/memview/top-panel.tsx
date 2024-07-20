@@ -412,6 +412,9 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             <VSCodeOption key={key++} value='1-byte'>
                                 1-Byte
                             </VSCodeOption>
+                            <VSCodeOption key={key++} value='2-byte'>
+                                2-Byte
+                            </VSCodeOption>
                             <VSCodeOption key={key++} value='4-byte'>
                                 4-Byte
                             </VSCodeOption>

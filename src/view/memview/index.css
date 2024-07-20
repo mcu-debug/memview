@@ -41,6 +41,10 @@ body {
     width: 3ch;
 }
 
+.hex-cell-value-header2 {
+    width: 6ch;
+}
+
 .hex-cell-value-header4 {
     width: 10ch;
 }
@@ -54,6 +58,10 @@ body {
     /* cursor: pointer;*/
     font-weight: bold;
     width: 3ch;
+}
+
+.hex-cell-value2 {
+    width: 6ch;
 }
 
 .hex-cell-value4 {
