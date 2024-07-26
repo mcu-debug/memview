@@ -215,14 +215,15 @@ export class DualViewDoc {
         return Promise.resolve(this.startAddress);
     }
 
-    async getMemoryPage(addr: bigint, nBytes: number): Promise<Uint8Array> {
+    async getMemoryPage(addrString: string, nBytes: number): Promise<Uint8Array> {
+        const addr = BigInt(addrString);
         let ary = !this.inWebview && !this.isReady ? this.memory.getPage(addr) : this.memory.getPageIfFresh(addr);
         if (ary) {
             return Promise.resolve(ary);
         }
         ary = undefined;
         try {
-            ary = await this.getMemoryPageFromSource(addr, nBytes);
+            ary = await this.getMemoryPageFromSource(addrString, nBytes);
         } catch (e) {}
         if (!ary) {
             ary = new Uint8Array(0); // TODO: This should not happen
@@ -301,13 +302,14 @@ export class DualViewDoc {
     }
 
     private pendingRequests: { [key: number]: Promise<Uint8Array> } = {};
-    getMemoryPageFromSource(addr: bigint, nBytes: number): Promise<Uint8Array> {
+    getMemoryPageFromSource(addrString: string, nBytes: number): Promise<Uint8Array> {
+        const addr = BigInt(addrString);
         const msg: ICmdGetMemory = {
             type: CmdType.GetMemory,
             sessionId: this.sessionId,
             docId: this.docId,
             seq: 0,
-            addr: addr.toString(),
+            addr: addrString,
             count: nBytes
         };
         const key = Number(addr - this.baseAddress);
@@ -597,6 +599,7 @@ export class DualViewDoc {
             'Supported       ' +
             'debuggers: cspy,' +
             'cortex-debug,   ' +
+            'cppvsdbg,       ' +
             'cppdbg';
         const tmp: IWebviewDocXfer = {
             docId: UnknownDocId,
@@ -776,7 +779,7 @@ class MemPages {
             this.growPages(slot);
             return new Promise((resolve) => {
                 this.parentDoc
-                    .getMemoryPageFromSource(pageAddr, DualViewDoc.PageSize)
+                    .getMemoryPageFromSource(hexFmt64(pageAddr), DualViewDoc.PageSize)
                     .then((buf) => {
                         page = this.pages[slot];
                         if (page.stale) {

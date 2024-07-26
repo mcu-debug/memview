@@ -19,7 +19,8 @@ let trackerApiClientInfo: IDebuggerSubscription;
 export const TrackedDebuggers = [
     'cortex-debug',
     'cppdbg',       // Microsoft debugger
-    'cspy'          // IAR debugger
+    'cspy',          // IAR debugger
+    'cppvsdbg'
 ];
 
 export interface ITrackedDebugSession {
