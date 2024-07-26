@@ -500,7 +500,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         const doc = DualViewDoc.getDocumentById(body.docId);
                         if (doc) {
                             const memCmd = (body as ICmdGetMemory);
-                            doc.getMemoryPage(BigInt(memCmd.addr), memCmd.count).then((b) => {
+                            doc.getMemoryPage(memCmd.addr, memCmd.count).then((b) => {
                                 this.postResponse(body, b);
                             });
                         } else {

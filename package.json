@@ -26,6 +26,7 @@
     "keywords": [
         "cortex-debug",
         "cppdbg",
+        "cppvsdbg",
         "embedded",
         "memory",
         "cortex",
@@ -34,6 +35,7 @@
     "activationEvents": [
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
+        "onDebugResolve:cppvsdbg",
         "onDebugResolve:cspy",
         "onCommand:cu-debug.memory-view.uriTest",
         "onWebviewPanel:memory-view.memoryView",
