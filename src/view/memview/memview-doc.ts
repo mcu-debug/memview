@@ -295,6 +295,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             startAddress: '',
             endian: 'little',
             format: '1-byte',
+            column: '16',
             isReadOnly: !sessionInfo?.canWriteMemory,
             clientState: {},
             baseAddressStale: true,
@@ -449,7 +450,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
         const memory = doc.getMemoryRaw();
         let base = memory.baseAddress;
-        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.PageSize)) {
+        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.currentDoc?.PageSize || 512)) {
             const page = memory.getPage(base);
             if (page && page.length) {
                 let addr = base;
@@ -665,6 +666,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 expr: expr,
                 endian: 'little',
                 format: '1-byte',
+                column: '16',
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
                 isReadOnly: !sessonInfo.canWriteMemory,
@@ -800,6 +802,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             expr: '0xdeafbeef',
             format: '1-byte',
             endian: 'little',
+            column: '16',
             wsFolder: '.',
             startAddress: '0',
             isReadOnly: false,

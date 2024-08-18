@@ -56,12 +56,6 @@ export interface IDualViewDocGlobalEventArg {
 
 export const DummyByte: IMemValue = { cur: -1, orig: -1, stale: true, inRange: false };
 export class DualViewDoc {
-    // DO NOT CHANGE PageSize w/o adjusting getPageEventId to make sure we don't create too
-    // many event listeners to an address change SubPageSize so that we result in less than 10
-    // listeners per SubPageSize
-    public static readonly PageSize = 512;
-    public static readonly SubPageSize = 64;
-
     public static globalEventEmitter = new events.EventEmitter();
     public static currentDoc: DualViewDoc | undefined;
     public static currentDocStack: string[] = [];
@@ -80,6 +74,8 @@ export class DualViewDoc {
     public expr: string;
     public endian: EndianType;
     public format: RowFormatType;
+    public column: string;
+    public bytesPerRow: number;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
@@ -89,6 +85,12 @@ export class DualViewDoc {
     private clientState: { [key: string]: any };
     public sessionStatus: DocDebuggerStatus = DocDebuggerStatus.Default;
     private startAddressStale = true;
+
+    // DO NOT CHANGE PageSize w/o adjusting getPageEventId to make sure we don't create too
+    // many event listeners to an address change SubPageSize so that we result in less than 10
+    // listeners per SubPageSize
+    public PageSize: number;
+    public SubPageSize: number;
 
     // This part is serialized/deserialized on demand
     private memory: MemPages;
@@ -101,12 +103,16 @@ export class DualViewDoc {
         this.expr = info.expr;
         this.endian = info.endian ?? 'little';
         this.format = info.format ?? '1-byte';
+        this.column = info.column ?? '16';
+        this.bytesPerRow = this.getBytesPerCell(this.format) * Number(this.column),
         this.wsFolder = info.wsFolder;
         this.sessionId = info.sessionId;
         this.sessionName = info.sessionName;
         this.isReadonly = info.isReadOnly;
         this.inWebview = DualViewDoc.InWebview();
         this.startAddressStale = info.baseAddressStale;
+        this.PageSize = 16 * this.bytesPerRow;
+        this.SubPageSize = this.PageSize / 8;
         if (info.modifiedMap) {
             // This map can contain values are are not actually yet in our memory
             for (const [key, value] of Object.entries(info.modifiedMap)) {
@@ -148,9 +154,35 @@ export class DualViewDoc {
         return !!myGlobals.vscode;
     }
 
+    getBytesPerCell(format : RowFormatType): 1 | 2 | 4 | 8 {
+        switch (format) {
+            case '1-byte': {
+                return 1;
+                break;
+            }
+            case '2-byte': {
+                return 2;
+                break;
+            }
+            case '4-byte': {
+                return 4;
+                break;
+            }
+            case '8-byte': {
+                return 8;
+                break;
+            }
+            default: {
+                console.error('Invalid format');
+                return 1;
+                break;
+            }
+        }
+    }
+
     setAddresses(startAddress: bigint) {
         this.startAddress = startAddress;
-        this.baseAddress = (this.startAddress / 16n) * 16n;
+        this.baseAddress = this.startAddress;
         this.maxAddress = this.baseAddress + BigInt(1024 * 1024);
     }
 
@@ -162,6 +194,10 @@ export class DualViewDoc {
         this.displayName = settings.displayName;
         this.endian = settings.endian;
         this.format = settings.format;
+        this.column = settings.column;
+        this.bytesPerRow = this.getBytesPerCell(this.format) * Number(this.column);
+        this.PageSize = 16 * this.bytesPerRow;
+        this.SubPageSize = this.PageSize / 8;
         // Now everything is out of sync. Requires a total re-render it is the callers responsibility to do that
     }
 
@@ -367,8 +403,9 @@ export class DualViewDoc {
 
     static getRowUnsafe(addr: bigint): IMemValue[] {
         const doc = DualViewDoc.currentDoc;
+        const bytesPerRow = doc?.bytesPerRow || 16;
         if (doc && doc.addrInRange(addr)) {
-            const origRow = doc.memory.getRowSync(addr);
+            const origRow = doc.memory.getRowSync(addr, BigInt(bytesPerRow));
             const isStale = doc.memory.isStale(addr);
             const ret: IMemValue[] = [];
             for (const orig of origRow) {
@@ -387,7 +424,7 @@ export class DualViewDoc {
             return ret;
         } else {
             const ret: IMemValue[] = [];
-            for (let ix = 0; ix < 16; ix++) {
+            for (let ix = 0; ix < bytesPerRow; ix++) {
                 ret.push(DummyByte);
             }
             return ret;
@@ -545,6 +582,7 @@ export class DualViewDoc {
             expr: this.expr,
             endian: this.endian,
             format: this.format,
+            column: this.column,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
             maxBytes: Number(this.maxAddress - this.startAddress),
@@ -608,6 +646,7 @@ export class DualViewDoc {
             startAddress: '0',
             endian: 'little',
             format: '1-byte',
+            column: '16',
             maxBytes: initString.length,
             isCurrentDoc: true,
             clientState: {},
@@ -655,7 +694,7 @@ class MemPages {
 
     private getSlot(addr: bigint): number {
         const offset = addr - this.baseAddress;
-        const slot = Math.floor(Number(offset) / DualViewDoc.PageSize);
+        const slot = Math.floor(Number(offset) / (DualViewDoc.currentDoc?.PageSize || 512));
         return slot;
     }
 
@@ -666,7 +705,7 @@ class MemPages {
             if (page.stale) {
                 promises.push(this.getValue(addr));
             }
-            addr += BigInt(DualViewDoc.PageSize);
+            addr += BigInt(DualViewDoc.currentDoc?.PageSize || 512);
         }
         return Promise.all(promises);
     }
@@ -685,7 +724,7 @@ class MemPages {
 
     public getPageEventId(addr: bigint): string {
         const slot = this.getSlot(addr);
-        const subSlot = Math.floor(Number(addr - this.baseAddress) / DualViewDoc.SubPageSize);
+        const subSlot = Math.floor(Number(addr - this.baseAddress) / (DualViewDoc.currentDoc?.SubPageSize || 64));
         const ret = `address-${slot}-${subSlot}`;
         return ret;
     }
@@ -726,22 +765,22 @@ class MemPages {
     public getValueSync(addr: bigint): number {
         const slot = this.getSlot(addr);
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        const pageAddr = this.baseAddress + BigInt(slot * DualViewDoc.PageSize);
+        const pageAddr = this.baseAddress + BigInt(slot * (DualViewDoc.currentDoc?.PageSize || 512));
         const offset = Number(addr - pageAddr);
         const buf = page ? page.current : undefined;
         return buf && offset < buf.length ? buf[offset] : -1;
     }
 
-    public getRowSync(addr: bigint): IByteVal[] {
-        addr = (addr / 16n) * 16n;
+    public getRowSync(addr: bigint, bytesPerRow: bigint): IByteVal[] {
+        addr = this.baseAddress + (((addr - this.baseAddress) / bytesPerRow) * bytesPerRow);
         const slot = this.getSlot(addr);
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        const pageAddr = this.baseAddress + BigInt(slot * DualViewDoc.PageSize);
+        const pageAddr = this.baseAddress + BigInt(slot * (DualViewDoc.currentDoc?.PageSize || 512));
         let offset = Number(addr - pageAddr);
         const buf = page?.current;
         const pBuf = page?.previous;
         const ret: IByteVal[] = [];
-        for (let ix = 0; ix < 16; ix++, offset++) {
+        for (let ix = 0; ix < bytesPerRow; ix++, offset++) {
             const current = buf && offset < buf.length ? buf[offset] : -1;
             const previous = pBuf && offset < pBuf.length ? pBuf[offset] : current;
             ret.push({ current: current, previous: previous });
@@ -753,7 +792,7 @@ class MemPages {
     public getValue(addr: bigint): IByteVal | Promise<IByteVal> {
         const slot = this.getSlot(addr);
         let page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
-        const pageAddr = this.baseAddress + BigInt(slot * DualViewDoc.PageSize);
+        const pageAddr = this.baseAddress + BigInt(slot * (DualViewDoc.currentDoc?.PageSize || 512));
         const get = (): IByteVal => {
             const offset = Number(addr - pageAddr);
             const buf = page ? page.current : undefined;
@@ -776,7 +815,7 @@ class MemPages {
             this.growPages(slot);
             return new Promise((resolve) => {
                 this.parentDoc
-                    .getMemoryPageFromSource(pageAddr, DualViewDoc.PageSize)
+                    .getMemoryPageFromSource(pageAddr, (DualViewDoc.currentDoc?.PageSize || 512))
                     .then((buf) => {
                         page = this.pages[slot];
                         if (page.stale) {
@@ -806,12 +845,12 @@ class MemPages {
 
     setValue(addr: bigint, val: number /* byte actually */, useThrow = false): void {
         const slot = this.getSlot(addr);
-        const pageAddr = this.baseAddress + BigInt(slot * DualViewDoc.PageSize);
+        const pageAddr = this.baseAddress + BigInt(slot * (DualViewDoc.currentDoc?.PageSize || 512));
         const page: IMemPage | undefined = slot < this.pages.length ? this.pages[slot] : undefined;
         const offset = Number(addr - pageAddr);
         if (!page || offset < 0 || offset >= page.current.length) {
             if (useThrow) {
-                const maxAddr = this.baseAddress + BigInt(this.pages.length * DualViewDoc.PageSize);
+                const maxAddr = this.baseAddress + BigInt(this.pages.length * (DualViewDoc.currentDoc?.PageSize || 512));
                 throw new Error(
                     `Requested address ${addr}. base address = ${this.baseAddress}, max address = ${maxAddr}`
                 );

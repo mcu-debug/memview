@@ -84,6 +84,7 @@ export interface IModifiableProps {
     displayName: string;
     endian: EndianType;
     format: RowFormatType;
+    column: string;
 }
 export interface IWebviewDocInfo {
     displayName: string;
@@ -112,6 +113,7 @@ export interface IWebviewDocXfer {
     isReadOnly: boolean; // Where to start reading.
     format: RowFormatType;
     endian: EndianType;
+    column: string;
     isCurrentDoc?: boolean;
     maxBytes?: number;
     modifiedMap?: ModifiedXferMap;

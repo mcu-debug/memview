@@ -112,8 +112,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             selChangedToggle: true
         };
         // console.log('HexTableVirtual2 ctor()', this.state);
-        this.bytesPerRow = doc ? (doc.format === '1-byte' ? 16 : 32) : 16;
-        this.maxNumRows = maxNumBytes * this.bytesPerRow;
+        this.bytesPerRow = doc?.bytesPerRow || 16;
+        this.maxNumRows = Math.ceil(maxNumBytes / this.bytesPerRow);
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         SelContext.eventEmitter.addListener('changed', () => {
             this.setState({ selChangedToggle: !this.state.selChangedToggle });

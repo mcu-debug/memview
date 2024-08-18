@@ -130,7 +130,8 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
             expr: DualViewDoc.currentDoc?.expr || '0',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
-            format: DualViewDoc.currentDoc?.format || '1-byte'
+            format: DualViewDoc.currentDoc?.format || '1-byte',
+            column: DualViewDoc.currentDoc?.column || '16'
         };
         return props;
     }
@@ -280,6 +281,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private displayNameRef = React.createRef<any>();
     private endian: string;
     private format: string;
+    private column: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -291,6 +293,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         };
         this.endian = props.settings.endian;
         this.format = props.settings.format;
+        this.column = props.settings.column;
         ViewSettings.GlobalPtr = this;
     }
 
@@ -304,6 +307,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         });
         this.GlobalPtr.endian = settings.endian;
         this.GlobalPtr.format = settings.format;
+        this.GlobalPtr.column = settings.column;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -342,6 +346,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.format = this.format as RowFormatType;
             changed = true;
         }
+        
+        if (ret.column !== this.column) {
+            ret.column = this.column;
+            changed = true;
+        }
 
         this.props.onDone(changed ? ret : undefined);
     }
@@ -354,6 +363,13 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
     private onFormatChangeFunc = this.onFormatChange.bind(this);
     private onFormatChange(e: any) {
         this.format = e.target.value;
+    }
+
+    private onColumnChangeFunc = this.onColumnChange.bind(this);
+    private onColumnChange(e: any) {
+        if ((Number(e.target.value) !== undefined) && (isNaN(Number(e.target.value)) === false) && (Number(e.target.value) !== 0)) {
+            this.column = e.target.value;
+        }
     }
 
     render(): React.ReactNode {
@@ -435,6 +451,20 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 Big
                             </VSCodeOption>
                         </VSCodeDropdown>
+                    </div>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Column
+                        </label>
+                        <VSCodeTextField
+                            key={key++}
+                            name='Column'
+                            type='text'
+                            style={{ width: '10%' }}
+                            value={this.column}
+                            onChange={this.onColumnChangeFunc}
+                        >
+                        </VSCodeTextField>
                     </div>
                     <div key={key++} style={{ marginTop: '10px' }}>
                         <VSCodeDropdown key={key++} style={{ width: '25ch' }}>

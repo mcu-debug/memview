@@ -323,11 +323,10 @@ export interface IHexHeaderRow {
 }
 
 export function HexHeaderRow(props: IHexHeaderRow): JSX.Element {
-    const fmt = DualViewDoc.currentDoc?.format;
-    const bytesPerCell = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
+    const bytesPerCell = DualViewDoc.currentDoc?.getBytesPerCell(DualViewDoc.currentDoc.format) || 1;
     const classNames = `hex-header-row scrollHorizontalSync ${props.cls || ''}`;
     const addrCells: JSX.Element[] = [];
-    const bytesInRow = bytesPerCell === 1 ? 16 : 32;
+    const bytesInRow = DualViewDoc.currentDoc?.bytesPerRow || 16;
 
     let key = 2;
     for (let ix = 0; ix < bytesInRow; ix += bytesPerCell) {
@@ -374,16 +373,15 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private sessionStatus = UnknownDocId;
     private onRowChangeFunc = this.rowChanged.bind(this);
     private mountStatus = false;
-    private bytesInRow = 16;
+    private bytesInRow = DualViewDoc.currentDoc?.bytesPerRow || 16;
     private static bytePerWord: 1 | 2 | 4 | 8;
     private static byteOrder: number[] = [];
     private static isBigEndian = false;
     private myRef = React.createRef<HTMLDivElement>();
     constructor(public props: IHexDataRow) {
         super(props);
-        const fmt = DualViewDoc.currentDoc?.format;
         if (HexDataRow.byteOrder.length === 0) {
-            HexDataRow.bytePerWord = fmt === '1-byte' ? 1 : fmt === '2-byte' ? 2 : fmt === '4-byte' ? 4 : 8;
+            HexDataRow.bytePerWord = DualViewDoc.currentDoc?.getBytesPerCell(DualViewDoc.currentDoc.format) || 1;
             HexDataRow.isBigEndian = DualViewDoc.currentDoc?.endian === 'big';
             if (HexDataRow.isBigEndian) {
                 for (let ix = 0; ix < HexDataRow.bytePerWord; ix++) {
@@ -395,7 +393,7 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                 }
             }
         }
-        this.bytesInRow = HexDataRow.bytePerWord === 1 ? 16 : 32;
+        this.bytesInRow = DualViewDoc.currentDoc?.bytesPerRow || 16;
         const bytes = [];
         for (let ix = 0; ix < this.bytesInRow; ix++) {
             bytes[ix] = DummyByte;
@@ -427,13 +425,8 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
                     }
                     changed = changed || byte.changed;
                     stale = stale || byte.stale;
-                    if (HexDataRow.isBigEndian) {
-                        curV = (curV << 8n) | BigInt(byte.cur & 0xff);
-                        origV = (origV << 8n) | BigInt(byte.orig & 0xff);
-                    } else {
-                        curV = (curV << 8n) | BigInt(byte.cur & 0xff);
-                        origV = (origV << 8n) | BigInt(byte.orig & 0xff);
-                    }
+                    curV = (curV << 8n) | BigInt(byte.cur & 0xff);
+                    origV = (origV << 8n) | BigInt(byte.orig & 0xff);
                 }
             } catch (e) {
                 console.log(e);
@@ -463,17 +456,15 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
             // so do it the fast way, since the bytes should have been loaded by now
             let bytes: IMemValue[] = [];
             const p = [];
-            for (let row = 0; row < this.bytesInRow / 16; row++) {
-                const addr = this.props.address + BigInt(16 * row);
-                p.push(DualViewDoc.getCurrentDocByte(addr));
-            }
+            p.push(DualViewDoc.getCurrentDocByte(this.props.address));
             await Promise.all(p);
-            for (let row = 0; row < this.bytesInRow / 16; row++) {
-                const addr = this.props.address + BigInt(16 * row);
-                bytes = bytes.concat(DualViewDoc.getRowUnsafe(addr));
-            }
+            bytes = DualViewDoc.getRowUnsafe(this.props.address);
             const words = this.convertToWords(bytes);
-            this.setState({ bytes: bytes, words: words });
+            if (this.mountStatus) {
+                // Since may unmount while we executing the async function
+                // so check the mount status before we setState
+                this.setState({ bytes: bytes, words: words });
+            }
         }
     }
 
