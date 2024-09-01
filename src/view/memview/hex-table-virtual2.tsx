@@ -43,6 +43,7 @@ interface IHexTableState {
     sessionId: string;
     sessionStatus: string;
     baseAddress: bigint;
+    maxNumBytes: bigint;
     selChangedToggle: boolean;
 }
 
@@ -80,7 +81,6 @@ function setVscodeToolbarHeight(v: number) {
 
 const estimatedRowHeight = getVscodeRowHeight();
 const estimatedToolbarHeight = getVscodeToolbarHeight();
-const maxNumBytes = 4 * 1024 * 1024;
 
 export interface IHexTableVirtual {
     onChange?: OnCellChangeFunc;
@@ -91,8 +91,8 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
     private renderRowFunc = this.renderRow.bind(this);
     private onScrollFunc = this.onScroll.bind(this);
     private lineHeightDetectTimer: NodeJS.Timeout | undefined = undefined;
-    private maxNumRows: number;
     private bytesPerRow: number;
+    private maxNumRows: number;
     private listElementRef: any;
 
     constructor(public props: IHexTableVirtual) {
@@ -108,12 +108,13 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
             sessionId: doc?.sessionId || UnknownDocId,
             sessionStatus: doc?.sessionStatus || UnknownDocId,
             baseAddress: doc?.baseAddress ?? 0n,
+            maxNumBytes: doc?.maxBytes ?? (4n * 1024n * 1024n),
             scrollTop: getDocStateScrollTop(),
             selChangedToggle: true
         };
         // console.log('HexTableVirtual2 ctor()', this.state);
         this.bytesPerRow = doc?.bytesPerRow || 16;
-        this.maxNumRows = Math.ceil(maxNumBytes / this.bytesPerRow);
+        this.maxNumRows = Math.ceil(Number(this.state.maxNumBytes) / this.bytesPerRow);
         DualViewDoc.globalEventEmitter.addListener('any', this.onGlobalEventFunc);
         SelContext.eventEmitter.addListener('changed', () => {
             this.setState({ selChangedToggle: !this.state.selChangedToggle });
@@ -135,6 +136,12 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         }
         if (arg.baseAddress && arg.baseAddress !== this.state.baseAddress) {
             newState.baseAddress = arg.baseAddress ?? 0n;
+        }
+        if (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes) {
+            newState.maxNumBytes = arg.maxBytes ?? (4n * 1024n * 1024n);
+        }
+        if ((arg.baseAddress && arg.baseAddress !== this.state.baseAddress)
+            || (arg.maxBytes && arg.maxBytes !== this.state.maxNumBytes)) {
             newState.items = [];
             this.loadInitial(); // We need the items to be empty before calling this, not yet sure how to do that
         }
@@ -255,7 +262,9 @@ export class HexTableVirtual2 extends React.Component<IHexTableVirtual, IHexTabl
         const items = this.state.items ? [...this.state.items] : [];
         const newItems = [];
         let changed = false;
-        const endAddr = this.state.baseAddress + BigInt(maxNumBytes);
+        // At least 1 byte to prevent all components from unmounted cause maxNumBytes can't update
+        // A better way is when the items are empty still able to update maxNumBytes, not yet sure how to do that
+        const endAddr = this.state.baseAddress + (this.state.maxNumBytes || 1n);
         for (let ix = items.length; ix <= stopIndex; ix++) {
             const addr = this.state.baseAddress + BigInt(ix * this.bytesPerRow);
             if (addr >= endAddr) {

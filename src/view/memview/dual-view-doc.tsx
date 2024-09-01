@@ -23,6 +23,7 @@ import {
     DebugSessionStatusSimple,
     ICmdClientState,
     ICmdGetStartAddress,
+    ICmdGetMaxBytes,
     UnknownDocId,
     EndianType,
     RowFormatType,
@@ -50,6 +51,7 @@ export interface IDualViewDocGlobalEventArg {
     type: DualViewDocGlobalEventType;
     sessionStatus?: DocDebuggerStatus;
     baseAddress: bigint;
+    maxBytes: bigint;
     docId: string;
     sessionId?: string;
 }
@@ -72,10 +74,12 @@ export class DualViewDoc {
     public maxAddress = 0n;
     public displayName: string;
     public expr: string;
+    public size: string;
     public endian: EndianType;
     public format: RowFormatType;
     public column: string;
     public bytesPerRow: number;
+    public maxBytes = 4n * 1024n * 1024n;
     public isReadonly: boolean;
     public readonly docId: string;
     public sessionId: string;
@@ -85,6 +89,7 @@ export class DualViewDoc {
     private clientState: { [key: string]: any };
     public sessionStatus: DocDebuggerStatus = DocDebuggerStatus.Default;
     private startAddressStale = true;
+    private maxBytesStale = true;
 
     // DO NOT CHANGE PageSize w/o adjusting getPageEventId to make sure we don't create too
     // many event listeners to an address change SubPageSize so that we result in less than 10
@@ -98,9 +103,10 @@ export class DualViewDoc {
 
     constructor(info: IWebviewDocXfer) {
         this.docId = info.docId;
-        this.setAddresses(BigInt(info.startAddress));
+        this.setAddresses(BigInt(info.startAddress), BigInt(info.maxBytes));
         this.displayName = info.displayName;
         this.expr = info.expr;
+        this.size = info.size;
         this.endian = info.endian ?? 'little';
         this.format = info.format ?? '1-byte';
         this.column = info.column ?? '16';
@@ -111,6 +117,7 @@ export class DualViewDoc {
         this.isReadonly = info.isReadOnly;
         this.inWebview = DualViewDoc.InWebview();
         this.startAddressStale = info.baseAddressStale;
+        this.maxBytesStale = info.maxBytesStale;
         this.PageSize = 16 * this.bytesPerRow;
         this.SubPageSize = this.PageSize / 8;
         if (info.modifiedMap) {
@@ -180,15 +187,17 @@ export class DualViewDoc {
         }
     }
 
-    setAddresses(startAddress: bigint) {
+    setAddresses(startAddress: bigint, maxBytes: bigint) {
         this.startAddress = startAddress;
+        this.maxBytes = maxBytes;
         this.baseAddress = this.startAddress;
-        this.maxAddress = this.baseAddress + BigInt(1024 * 1024);
+        this.maxAddress = this.baseAddress + this.maxBytes;
     }
 
     updateSettings(settings: IModifiableProps) {
-        if (this.expr !== settings.expr) {
+        if ((this.expr !== settings.expr) || (this.size !== settings.size)) {
             this.expr = settings.expr;
+            this.size = settings.size;
             this.markAsStale();
         }
         this.displayName = settings.displayName;
@@ -242,13 +251,40 @@ export class DualViewDoc {
             const str = await DualViewDoc.memoryIF.getStartAddress(arg);
             const newVal = BigInt(str);
             if (newVal != this.startAddress) {
-                this.setAddresses(newVal);
+                this.setAddresses(newVal, this.maxBytes);
                 this.memory.markAllStale();
                 this.emitGlobalEvent(DualViewDocGlobalEventType.BaseAddress);
             }
         } catch {}
         this.startAddressStale = false;
         return Promise.resolve(this.startAddress);
+    }
+
+    async getMaxBytes(): Promise<bigint> {
+        if (!this.maxBytesStale) {
+            return Promise.resolve(this.maxBytes);
+        }
+        if (this.sessionStatus !== DocDebuggerStatus.Stopped) {
+            return Promise.resolve(this.maxBytes);
+        }
+        const arg: ICmdGetMaxBytes = {
+            expr: this.size,
+            def: this.maxBytes.toString(),
+            type: CmdType.GetMaxBytes,
+            sessionId: this.sessionId,
+            docId: this.docId
+        };
+        try {
+            const str = await DualViewDoc.memoryIF.getMaxBytes(arg);
+            const newVal = BigInt(str);
+            if (newVal != this.maxBytes) {
+                this.setAddresses(this.startAddress, newVal);
+                this.memory.markAllStale();
+                this.emitGlobalEvent(DualViewDocGlobalEventType.BaseAddress);
+            }
+        } catch {}
+        this.maxBytesStale = false;
+        return Promise.resolve(this.maxBytes);
     }
 
     async getMemoryPage(addr: bigint, nBytes: number): Promise<Uint8Array> {
@@ -327,6 +363,7 @@ export class DualViewDoc {
 
     public markAsStale() {
         this.startAddressStale = true;
+        this.maxBytesStale = true;
         this.memory.markAllStale();
     }
 
@@ -356,6 +393,9 @@ export class DualViewDoc {
             try {
                 if (this.startAddressStale) {
                     await this.getStartAddress();
+                }
+                if (this.maxBytesStale) {
+                    await this.getMaxBytes();
                 }
                 const ret = await DualViewDoc.memoryIF.getMemory(msg);
                 resolve(ret);
@@ -534,7 +574,8 @@ export class DualViewDoc {
             docId: this.docId,
             sessionId: this.sessionId,
             sessionStatus: this.sessionStatus,
-            baseAddress: this.baseAddress
+            baseAddress: this.baseAddress,
+            maxBytes: this.maxBytes
         };
         this.pendingArg = arg;
         this.statusChangeTimeout = setTimeout(() => {
@@ -557,6 +598,7 @@ export class DualViewDoc {
                 sessionStatus: doc.sessionStatus,
                 baseAddress: doc.baseAddress,
                 startAddress: doc.startAddress,
+                maxBytes: doc.maxBytes,
                 isModified: doc.isModified(),
                 isCurrent: doc === DualViewDoc.currentDoc
             };
@@ -583,13 +625,15 @@ export class DualViewDoc {
             endian: this.endian,
             format: this.format,
             column: this.column,
+            size: this.size,
             wsFolder: this.wsFolder,
             startAddress: this.startAddress.toString(),
-            maxBytes: Number(this.maxAddress - this.startAddress),
+            maxBytes: this.maxBytes.toString(),
             isCurrentDoc: this === DualViewDoc.currentDoc,
             modifiedMap: newMap,
             clientState: this.clientState,
             baseAddressStale: this.startAddressStale,
+            maxBytesStale: this.maxBytesStale,
             isReadOnly: this.isReadonly
         };
         if (includeMemories) {
@@ -647,10 +691,12 @@ export class DualViewDoc {
             endian: 'little',
             format: '1-byte',
             column: '16',
-            maxBytes: initString.length,
+            size: '4 * 1024 * 1024',
+            maxBytes: initString.length.toString(),
             isCurrentDoc: true,
             clientState: {},
             baseAddressStale: true,
+            maxBytesStale: true,
             isReadOnly: true
         };
         const doc = new DualViewDoc(tmp);
@@ -678,6 +724,10 @@ class MemPages {
 
     get baseAddress(): bigint {
         return this.parentDoc.baseAddress;
+    }
+
+    get maxAddress(): bigint {
+        return this.parentDoc.maxAddress;
     }
 
     public numPages(): number {
@@ -814,8 +864,9 @@ class MemPages {
         if (!page || page.stale || !page.current.length) {
             this.growPages(slot);
             return new Promise((resolve) => {
+                // Prevent load more than the input size
                 this.parentDoc
-                    .getMemoryPageFromSource(pageAddr, (DualViewDoc.currentDoc?.PageSize || 512))
+                    .getMemoryPageFromSource(pageAddr, Math.min((DualViewDoc.currentDoc?.PageSize || 512), Number(this.maxAddress - addr)))
                     .then((buf) => {
                         page = this.pages[slot];
                         if (page.stale) {

@@ -128,6 +128,7 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     private getViewProps(): IModifiableProps {
         const props: IModifiableProps = {
             expr: DualViewDoc.currentDoc?.expr || '0',
+            size: DualViewDoc.currentDoc?.size || '4 * 1024 * 1024',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
             format: DualViewDoc.currentDoc?.format || '1-byte',
@@ -278,6 +279,7 @@ interface IViewSettingsState {
 export class ViewSettings extends React.Component<IViewSettingsProps, IViewSettingsState> {
     static GlobalPtr: ViewSettings;
     private exprRef = React.createRef<any>();
+    private sizeRef = React.createRef<any>();
     private displayNameRef = React.createRef<any>();
     private endian: string;
     private format: string;
@@ -332,6 +334,10 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.expr = this.exprRef.current.value.trim();
             changed = true;
         }
+        if (ret.size !== this.sizeRef.current.value.trim()) {
+            ret.size = this.sizeRef.current.value.trim();
+            changed = true;
+        }
         if (ret.displayName !== this.displayNameRef.current.value.trim()) {
             ret.displayName = this.displayNameRef.current.value.trim();
             changed = true;
@@ -367,7 +373,8 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
 
     private onColumnChangeFunc = this.onColumnChange.bind(this);
     private onColumnChange(e: any) {
-        if ((Number(e.target.value) !== undefined) && (isNaN(Number(e.target.value)) === false) && (Number(e.target.value) !== 0)) {
+        const value = Number(e.target.value);
+        if ((value !== undefined) && (isNaN(value) === false) && (value !== 0)) {
             this.column = e.target.value;
         }
     }
@@ -382,7 +389,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 5}ch`,
+                        width: `${bigLabel.length + 10}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -458,7 +465,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         </label>
                         <VSCodeTextField
                             key={key++}
-                            name='Column'
+                            name='column'
                             type='text'
                             style={{ width: '10%' }}
                             value={this.column}
@@ -466,6 +473,22 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         >
                         </VSCodeTextField>
                     </div>
+                    <br key={key++}></br>
+                    <div key={key++} className='dropdown-label-div' style={{ width: '100%' }}>
+                        <label key={key++} className='dropdown-label'>
+                            Memory Size
+                        </label>
+                        <VSCodeTextField
+                            key={key++}
+                            name='size'
+                            type='text'
+                            style={{ width: '78%' }}
+                            ref={this.sizeRef}
+                            value={this.state.settings.size}
+                        >
+                        </VSCodeTextField>
+                    </div>
+                    <br key={key++}></br>
                     <div key={key++} style={{ marginTop: '10px' }}>
                         <VSCodeDropdown key={key++} style={{ width: '25ch' }}>
                             <VSCodeOption key={key++} value='view'>
