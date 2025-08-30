@@ -9,6 +9,11 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
 
+## 0.0.26 - Aug 30, 2025
+
+-   [#40](https://github.com/mcu-debug/memview/issues/40): Add tracking of the mplab debugger by @xoriath
+-   [#34](https://github.com/mcu-debug/memview/issues/34): Add custom column and custom size by @Lee20171010
+
 ## 0.0.25 - Nov 12, 2023
 
 -   **Major change:** Now, there is a way to launch this memory viewer directly from the Variable/Watch windows. For debuggers that provide memory references. Most C/C++ debuggers do. See https://github.com/mcu-debug/memview/issues/25
