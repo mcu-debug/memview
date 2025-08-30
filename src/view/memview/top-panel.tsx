@@ -352,7 +352,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.format = this.format as RowFormatType;
             changed = true;
         }
-        
+
         if (ret.column !== this.column) {
             ret.column = this.column;
             changed = true;
@@ -371,10 +371,10 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.format = e.target.value;
     }
 
-    private onColumnChangeFunc = this.onColumnChange.bind(this);
-    private onColumnChange(e: any) {
+    private onColumnsChangeFunc = this.onColumnsChange.bind(this);
+    private onColumnsChange(e: any) {
         const value = Number(e.target.value);
-        if ((value !== undefined) && (isNaN(value) === false) && (value !== 0)) {
+        if (value !== undefined && isNaN(value) === false && value !== 0) {
             this.column = e.target.value;
         }
     }
@@ -389,7 +389,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 10}ch`,
+                        width: `${bigLabel.length + 20}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -461,17 +461,16 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     </div>
                     <div key={key++} className='dropdown-label-div'>
                         <label key={key++} className='dropdown-label'>
-                            Column
+                            #Columns
                         </label>
                         <VSCodeTextField
                             key={key++}
                             name='column'
                             type='text'
-                            style={{ width: '10%' }}
+                            style={{ width: '5%' }}
                             value={this.column}
-                            onChange={this.onColumnChangeFunc}
-                        >
-                        </VSCodeTextField>
+                            onChange={this.onColumnsChangeFunc}
+                        ></VSCodeTextField>
                     </div>
                     <br key={key++}></br>
                     <div key={key++} className='dropdown-label-div' style={{ width: '100%' }}>
@@ -485,8 +484,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             style={{ width: '78%' }}
                             ref={this.sizeRef}
                             value={this.state.settings.size}
-                        >
-                        </VSCodeTextField>
+                        ></VSCodeTextField>
                     </div>
                     <br key={key++}></br>
                     <div key={key++} style={{ marginTop: '10px' }}>
