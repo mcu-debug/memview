@@ -14,14 +14,17 @@ import {
     IMemoryInterfaceCommands,
     CmdType,
     ICmdBase,
-    ICmdSetMemory
+    ICmdSetMemory,
+    ICmdGetMaxBytes
 } from './shared';
 
 class MemoryInterfaceFromVSCode implements IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
         return vscodePostCommand(arg);
     }
-
+    getMaxBytes(arg: ICmdGetMaxBytes): Promise<string> {
+        return vscodePostCommand(arg);
+    }
     getMemory(arg: ICmdGetMemory): Promise<Buffer> {
         return vscodePostCommand(arg);
     }

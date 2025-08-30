@@ -11,6 +11,7 @@ export enum CmdType {
     NewDocument = 'NewDocument',
     SaveClientState = 'SaveClientState',
     GetStartAddress = 'GetBaseAddress',
+    GetMaxBytes = 'GetMaxBytes',
     ButtonClick = 'ButtonClick',
     SettingsChanged = 'SettingsChanged'
 }
@@ -59,6 +60,11 @@ export interface ICmdGetStartAddress extends ICmdBase {
     def: string;
 }
 
+export interface ICmdGetMaxBytes extends ICmdBase {
+    expr: string;
+    def: string;
+}
+
 export interface ICmdSetMemory extends ICmdGetMemory {
     bytes: Uint8Array;
 }
@@ -76,14 +82,16 @@ export interface IMemValue {
     inRange: boolean;
 }
 
-export type RowFormatType = '1-byte' | '4-byte' | '8-byte';
+export type RowFormatType = '1-byte' | '2-byte' | '4-byte' | '8-byte';
 export type EndianType = 'little' | 'big';
 
 export interface IModifiableProps {
     expr: string;
+    size: string;
     displayName: string;
     endian: EndianType;
     format: RowFormatType;
+    column: string;
 }
 export interface IWebviewDocInfo {
     displayName: string;
@@ -94,6 +102,7 @@ export interface IWebviewDocInfo {
     isCurrent: boolean;
     baseAddress: bigint;
     startAddress: bigint;
+    maxBytes: bigint;
 }
 
 export interface ICmdSettingsChanged extends ICmdBase {
@@ -107,16 +116,19 @@ export interface IWebviewDocXfer {
     sessionName: string;        // The debug session name
     displayName: string;
     expr: string;
+    size: string;
     wsFolder: string;
     startAddress: string;
     isReadOnly: boolean; // Where to start reading.
     format: RowFormatType;
     endian: EndianType;
+    column: string;
+    maxBytes: string;
     isCurrentDoc?: boolean;
-    maxBytes?: number;
     modifiedMap?: ModifiedXferMap;
     memory?: IMemPages;
     baseAddressStale: boolean;
+    maxBytesStale: boolean;
     clientState: { [key: string]: any };
 }
 
@@ -131,6 +143,7 @@ export interface ICmdButtonClick extends ICmdBase {
 
 export interface IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string>;
+    getMaxBytes(arg: ICmdGetMaxBytes): Promise<string>;
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array>;
     setMemory(arg: ICmdSetMemory): Promise<boolean>;
 }

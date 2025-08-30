@@ -86,7 +86,7 @@ export class SelContext {
                     await DualViewDoc.getCurrentDocByte(addr); // This will refresh if debugger is stopped
                 } catch {}
             };
-            const pageSize = BigInt(DualViewDoc.PageSize);
+            const pageSize = BigInt(DualViewDoc.currentDoc?.PageSize || 512);
             let addr = (range.start / 16n) * 16n;
             await refreshPage(addr);
             const lines: string[] = [];

@@ -7,7 +7,8 @@ import { MemViewExtension, MemviewUriOptions } from '../../extension';
 import {
     IWebviewDocXfer, ICmdGetMemory, IMemoryInterfaceCommands, ICmdBase, CmdType,
     IMessage, ICmdSetMemory, ICmdSetByte, IMemviewDocumentOptions, ITrackedDebugSessionXfer,
-    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, UnknownDocId
+    ICmdClientState, ICmdGetStartAddress, ICmdButtonClick, ICmdSettingsChanged, UnknownDocId,
+    ICmdGetMaxBytes
 } from './shared';
 import { DebuggerTrackerLocal, ITrackedDebugSession } from './debug-tracker';
 import { DebugProtocol } from '@vscode/debugprotocol';
@@ -291,13 +292,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             sessionName: session?.name || cvt(options.sessionName) || '',
             displayName: cvt(options.displayName) || path || expr || '0',
             expr: expr || path,
+            size: '4 * 1024 * 1024',
             wsFolder: session?.workspaceFolder?.uri.toString() || cvt(options.wsFolder) || '',
             startAddress: '',
             endian: 'little',
             format: '1-byte',
+            column: '16',
+            maxBytes: '',
             isReadOnly: !sessionInfo?.canWriteMemory,
             clientState: {},
             baseAddressStale: true,
+            maxBytesStale: true,
             isCurrentDoc: true,
         };
 
@@ -330,6 +335,8 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 MemViewPanelProvider.getExprResult(existing.sessionInfo.session, props.expr).then((addr) => {
                     props.baseAddressStale = false;
                     props.startAddress = addr;
+                    props.maxBytesStale = false;
+                    props.maxBytes = '4 * 1024 * 1024';
                     new DualViewDoc(props);
                     MemViewPanelProvider.Provider.showPanel();
                     return Promise.resolve();
@@ -449,7 +456,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
         const memory = doc.getMemoryRaw();
         let base = memory.baseAddress;
-        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.PageSize)) {
+        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.currentDoc?.PageSize || 512)) {
             const page = memory.getPage(base);
             if (page && page.length) {
                 let addr = base;
@@ -485,6 +492,24 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             const oldAddr = doc.startAddress;
                             doc.getStartAddress().then((v) => {
                                 if (oldAddr !== v) {
+                                    // Do it the lazy way for now.
+                                    this.updateHtmlForInit();
+                                } else {
+                                    this.postResponse(body, v.toString());
+                                }
+                            });
+                        } else {
+                            this.postResponse(body, memCmd.def);
+                        }
+                        break;
+                    }
+                    case CmdType.GetMaxBytes: {
+                        const doc = DualViewDoc.getDocumentById(body.docId);
+                        const memCmd = (body as ICmdGetMaxBytes);
+                        if (doc) {
+                            const oldSize = doc.maxBytes;
+                            doc.getMaxBytes().then((v) => {
+                                if (oldSize !== v) {
                                     // Do it the lazy way for now.
                                     this.updateHtmlForInit();
                                 } else {
@@ -567,7 +592,11 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                         const newSettings = (body as ICmdSettingsChanged)?.settings;
                         if (doc && newSettings) {
                             if ((doc.expr !== newSettings.expr) && (doc.sessionStatus !== DocDebuggerStatus.Stopped)) {
-                                vscode.window.showInformationMessage(`Memory view expression changed to ${newSettings.expr}. ` +
+                                vscode.window.showInformationMessage(`Memory view address expression changed to ${newSettings.expr}. ` +
+                                    'The view contents will be updated the next time the debugger is paused');
+                            }
+                            if ((doc.size !== newSettings.size) && (doc.sessionStatus !== DocDebuggerStatus.Stopped)) {
+                                vscode.window.showInformationMessage(`Memory view size expression changed to ${newSettings.size}. ` +
                                     'The view contents will be updated the next time the debugger is paused');
                             }
                             doc.updateSettings((body as ICmdSettingsChanged).settings);
@@ -653,23 +682,33 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         }
     }
 
-    static addMemoryView(session: vscode.DebugSession, expr: string) {
-        expr = expr.trim();
-        MemViewPanelProvider.getExprResult(session, expr).then((addr) => {
+    static addMemoryView(session: vscode.DebugSession, addrExpr: string, sizeExpr: string) {
+        sizeExpr = sizeExpr.trim();
+        addrExpr = addrExpr.trim();
+        let size: string;
+
+        MemViewPanelProvider.getExprResult(session, sizeExpr).then((result) => {
+            size = result;
+            return MemViewPanelProvider.getExprResult(session, addrExpr);
+        }).then((addr) => {
             const sessonInfo = DebuggerTrackerLocal.getSessionById(session.id);
             const props: IWebviewDocXfer = {
                 docId: uuid(),
                 sessionId: session.id,
                 sessionName: session.name,
-                displayName: expr,
-                expr: expr,
+                displayName: addrExpr,
+                expr: addrExpr,
                 endian: 'little',
                 format: '1-byte',
+                column: '16',
+                size: sizeExpr,
                 wsFolder: session.workspaceFolder?.uri.toString() || '.',
                 startAddress: addr,
+                maxBytes: size,
                 isReadOnly: !sessonInfo.canWriteMemory,
                 clientState: {},
                 baseAddressStale: false,
+                maxBytesStale: false,
                 isCurrentDoc: true,
             };
             const existing = DualViewDoc.findDocumentIfExists(props);
@@ -684,7 +723,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                 MemViewPanelProvider.Provider.showPanel();
             }
         }).catch((e) => {
-            vscode.window.showErrorMessage(`Error: Bad expression '${expr}'. ${e}`);
+            vscode.window.showErrorMessage(`Error: Bad expression. ${e}`);
         });
     }
 
@@ -729,16 +768,24 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             vscode.window.showErrorMessage(`${ret}. Cannot add a memory view`);
             return;
         }
-        const options: vscode.InputBoxOptions = {
+        const addrExprOptions: vscode.InputBoxOptions = {
             title: 'Create new memory view',
-            prompt: 'Enter a hex/decimal constant of a C-expression',
+            prompt: 'Enter a hex/decimal constant of a C-expression for address',
             placeHolder: '0x',
         };
-        vscode.window.showInputBox(options).then((value: string | undefined) => {
-            value = value !== undefined ? value.trim() : '';
-            if (value && vscode.debug.activeDebugSession) {
-                MemViewPanelProvider.addMemoryView(vscode.debug.activeDebugSession, value);
-            }
+        const sizeExprOptions: vscode.InputBoxOptions = {
+            title: 'New memory view size',
+            prompt: 'Enter a hex/decimal constant of a C-expression for size',
+            value: '4 * 1024 * 1024',
+        };
+        vscode.window.showInputBox(addrExprOptions).then((addrExpr: string | undefined) => {
+            vscode.window.showInputBox(sizeExprOptions).then((sizeExpr: string | undefined) => {
+                addrExpr = addrExpr !== undefined ? addrExpr.trim() : '';
+                sizeExpr = sizeExpr !== undefined ? sizeExpr.trim() : '';
+                if (addrExpr && sizeExpr && vscode.debug.activeDebugSession) {
+                    MemViewPanelProvider.addMemoryView(vscode.debug.activeDebugSession, addrExpr, sizeExpr);
+                }
+            });
         });
     }
 
@@ -778,16 +825,16 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                             return;
                         }
                     }
-                    vscode.window.showInformationMessage(`Memory View: Address '${expr}' evaluated to ${res} which is not a constant`);
+                    vscode.window.showInformationMessage(`Memory View: Expression '${expr}' evaluated to ${res} which is not a constant`);
                     reject(new Error(`Expression '${expr}' failed to evaluate to a proper pointer value. Result: '${res}'`));
                 } else {
-                    vscode.window.showInformationMessage(`Memory View: Failed to evaluate address '${expr}'`);
+                    vscode.window.showInformationMessage(`Memory View: Failed to evaluate expression '${expr}'`);
                     reject(new Error(`Expression '${expr}' failed to yield a proper result. Got ${JSON.stringify(result)}`));
                 }
-            }), (e: any) => {
-                vscode.window.showInformationMessage(`Memory View: Failed to evaluate address '${expr}'`);
+            }).then(undefined, e => {
+                vscode.window.showInformationMessage(`Memory View: Failed to evaluate expression '${expr}'`);
                 reject(new Error(`Expression '${expr}' threw an error. ${JSON.stringify(e)}`));
-            };
+            });
         });
     }
 
@@ -798,13 +845,17 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             sessionName: 'blah',
             displayName: '0xdeadbeef',
             expr: '0xdeafbeef',
+            size: '0xdeafbeef',
             format: '1-byte',
             endian: 'little',
+            column: '16',
             wsFolder: '.',
             startAddress: '0',
+            maxBytes: '4 * 1024 * 1024',
             isReadOnly: false,
             clientState: {},
             baseAddressStale: false,
+            maxBytesStale: false,
             isCurrentDoc: true,
         };
         const buf = fs.readFileSync(path);
@@ -818,6 +869,9 @@ class mockDebugger implements IMemoryInterfaceCommands {
     constructor(private testBuffer: Uint8Array, private baseAddress: bigint) {
     }
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
+        return Promise.resolve(arg.def);
+    }
+    getMaxBytes(arg: ICmdGetMaxBytes): Promise<string> {
         return Promise.resolve(arg.def);
     }
     getMemory(arg: ICmdGetMemory): Promise<Uint8Array> {
@@ -835,6 +889,13 @@ class mockDebugger implements IMemoryInterfaceCommands {
 
 class DebuggerIF implements IMemoryInterfaceCommands {
     getStartAddress(arg: ICmdGetStartAddress): Promise<string> {
+        const session = DebuggerTrackerLocal.getSessionById(arg.sessionId);
+        if (!session || (session.status !== DebugSessionStatus.Stopped)) {
+            return Promise.resolve(arg.def);
+        }
+        return MemViewPanelProvider.getExprResult(session.session, arg.expr);
+    }
+    getMaxBytes(arg: ICmdGetMaxBytes): Promise<string> {
         const session = DebuggerTrackerLocal.getSessionById(arg.sessionId);
         if (!session || (session.status !== DebugSessionStatus.Stopped)) {
             return Promise.resolve(arg.def);

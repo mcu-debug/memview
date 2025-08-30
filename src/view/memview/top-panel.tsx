@@ -128,9 +128,11 @@ export class MemViewToolbar extends React.Component<IMemViewPanelProps, IMemView
     private getViewProps(): IModifiableProps {
         const props: IModifiableProps = {
             expr: DualViewDoc.currentDoc?.expr || '0',
+            size: DualViewDoc.currentDoc?.size || '4 * 1024 * 1024',
             displayName: DualViewDoc.currentDoc?.displayName || 'Huh?',
             endian: DualViewDoc.currentDoc?.endian || 'little',
-            format: DualViewDoc.currentDoc?.format || '1-byte'
+            format: DualViewDoc.currentDoc?.format || '1-byte',
+            column: DualViewDoc.currentDoc?.column || '16'
         };
         return props;
     }
@@ -277,9 +279,11 @@ interface IViewSettingsState {
 export class ViewSettings extends React.Component<IViewSettingsProps, IViewSettingsState> {
     static GlobalPtr: ViewSettings;
     private exprRef = React.createRef<any>();
+    private sizeRef = React.createRef<any>();
     private displayNameRef = React.createRef<any>();
     private endian: string;
     private format: string;
+    private column: string;
 
     constructor(props: IViewSettingsProps) {
         super(props);
@@ -291,6 +295,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         };
         this.endian = props.settings.endian;
         this.format = props.settings.format;
+        this.column = props.settings.column;
         ViewSettings.GlobalPtr = this;
     }
 
@@ -304,6 +309,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         });
         this.GlobalPtr.endian = settings.endian;
         this.GlobalPtr.format = settings.format;
+        this.GlobalPtr.column = settings.column;
     }
 
     private onClickCloseFunc = this.onClickClose.bind(this);
@@ -328,6 +334,10 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
             ret.expr = this.exprRef.current.value.trim();
             changed = true;
         }
+        if (ret.size !== this.sizeRef.current.value.trim()) {
+            ret.size = this.sizeRef.current.value.trim();
+            changed = true;
+        }
         if (ret.displayName !== this.displayNameRef.current.value.trim()) {
             ret.displayName = this.displayNameRef.current.value.trim();
             changed = true;
@@ -340,6 +350,11 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
 
         if (ret.format !== this.format) {
             ret.format = this.format as RowFormatType;
+            changed = true;
+        }
+        
+        if (ret.column !== this.column) {
+            ret.column = this.column;
             changed = true;
         }
 
@@ -356,6 +371,14 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
         this.format = e.target.value;
     }
 
+    private onColumnChangeFunc = this.onColumnChange.bind(this);
+    private onColumnChange(e: any) {
+        const value = Number(e.target.value);
+        if ((value !== undefined) && (isNaN(value) === false) && (value !== 0)) {
+            this.column = e.target.value;
+        }
+    }
+
     render(): React.ReactNode {
         let key = 0;
         const bigLabel = 'Address: Hex/decimal constant or expression';
@@ -366,7 +389,7 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 5}ch`,
+                        width: `${bigLabel.length + 10}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -412,6 +435,9 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             <VSCodeOption key={key++} value='1-byte'>
                                 1-Byte
                             </VSCodeOption>
+                            <VSCodeOption key={key++} value='2-byte'>
+                                2-Byte
+                            </VSCodeOption>
                             <VSCodeOption key={key++} value='4-byte'>
                                 4-Byte
                             </VSCodeOption>
@@ -433,6 +459,36 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                             </VSCodeOption>
                         </VSCodeDropdown>
                     </div>
+                    <div key={key++} className='dropdown-label-div'>
+                        <label key={key++} className='dropdown-label'>
+                            Column
+                        </label>
+                        <VSCodeTextField
+                            key={key++}
+                            name='column'
+                            type='text'
+                            style={{ width: '10%' }}
+                            value={this.column}
+                            onChange={this.onColumnChangeFunc}
+                        >
+                        </VSCodeTextField>
+                    </div>
+                    <br key={key++}></br>
+                    <div key={key++} className='dropdown-label-div' style={{ width: '100%' }}>
+                        <label key={key++} className='dropdown-label'>
+                            Memory Size
+                        </label>
+                        <VSCodeTextField
+                            key={key++}
+                            name='size'
+                            type='text'
+                            style={{ width: '78%' }}
+                            ref={this.sizeRef}
+                            value={this.state.settings.size}
+                        >
+                        </VSCodeTextField>
+                    </div>
+                    <br key={key++}></br>
                     <div key={key++} style={{ marginTop: '10px' }}>
                         <VSCodeDropdown key={key++} style={{ width: '25ch' }}>
                             <VSCodeOption key={key++} value='view'>
