@@ -224,3 +224,8 @@ body {
     margin-top: 4px;
     margin-right: 1ch;
 }
+
+.dialog-row {
+    display: flex;
+    flex-wrap: nowrap;
+}

@@ -427,52 +427,53 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                         Display Name
                     </VSCodeTextField>
                     <br key={key++}></br>
-                    <div key={key++} className='dropdown-label-div'>
-                        <label key={key++} className='dropdown-label'>
-                            Format
-                        </label>
-                        <VSCodeDropdown key={key++} value={this.format} onChange={this.onFormatChangeFunc}>
-                            <VSCodeOption key={key++} value='1-byte'>
-                                1-Byte
-                            </VSCodeOption>
-                            <VSCodeOption key={key++} value='2-byte'>
-                                2-Byte
-                            </VSCodeOption>
-                            <VSCodeOption key={key++} value='4-byte'>
-                                4-Byte
-                            </VSCodeOption>
-                            <VSCodeOption key={key++} value='8-byte'>
-                                8-Byte
-                            </VSCodeOption>
-                        </VSCodeDropdown>
+                    <div key={key++} className='dialog-row'>
+                        <div key={key++} className='dropdown-label-div'>
+                            <label key={key++} className='dropdown-label'>
+                                Format
+                            </label>
+                            <VSCodeDropdown key={key++} value={this.format} onChange={this.onFormatChangeFunc}>
+                                <VSCodeOption key={key++} value='1-byte'>
+                                    1-Byte
+                                </VSCodeOption>
+                                <VSCodeOption key={key++} value='2-byte'>
+                                    2-Byte
+                                </VSCodeOption>
+                                <VSCodeOption key={key++} value='4-byte'>
+                                    4-Byte
+                                </VSCodeOption>
+                                <VSCodeOption key={key++} value='8-byte'>
+                                    8-Byte
+                                </VSCodeOption>
+                            </VSCodeDropdown>
+                        </div>
+                        <div key={key++} className='dropdown-label-div'>
+                            <label key={key++} className='dropdown-label'>
+                                Endianness
+                            </label>
+                            <VSCodeDropdown key={key++} value={this.endian} onChange={this.onEndiannessChangeFunc}>
+                                <VSCodeOption key={key++} value='little'>
+                                    Little
+                                </VSCodeOption>
+                                <VSCodeOption key={key++} value='big'>
+                                    Big
+                                </VSCodeOption>
+                            </VSCodeDropdown>
+                        </div>
+                        <div key={key++} className='dropdown-label-div'>
+                            <label key={key++} className='dropdown-label'>
+                                &nbsp;#Columns
+                            </label>
+                            <VSCodeTextField
+                                key={key++}
+                                name='column'
+                                type='text'
+                                style={{ width: '4ch' }}
+                                value={this.column}
+                                onChange={this.onColumnsChangeFunc}
+                            ></VSCodeTextField>
+                        </div>
                     </div>
-                    <div key={key++} className='dropdown-label-div'>
-                        <label key={key++} className='dropdown-label'>
-                            Endianness
-                        </label>
-                        <VSCodeDropdown key={key++} value={this.endian} onChange={this.onEndiannessChangeFunc}>
-                            <VSCodeOption key={key++} value='little'>
-                                Little
-                            </VSCodeOption>
-                            <VSCodeOption key={key++} value='big'>
-                                Big
-                            </VSCodeOption>
-                        </VSCodeDropdown>
-                    </div>
-                    <div key={key++} className='dropdown-label-div'>
-                        <label key={key++} className='dropdown-label'>
-                            #Columns
-                        </label>
-                        <VSCodeTextField
-                            key={key++}
-                            name='column'
-                            type='text'
-                            style={{ width: '5%' }}
-                            value={this.column}
-                            onChange={this.onColumnsChangeFunc}
-                        ></VSCodeTextField>
-                    </div>
-                    <br key={key++}></br>
                     <div key={key++} className='dropdown-label-div' style={{ width: '100%' }}>
                         <label key={key++} className='dropdown-label'>
                             Memory Size
