@@ -336,7 +336,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
                     props.baseAddressStale = false;
                     props.startAddress = addr;
                     props.maxBytesStale = false;
-                    props.maxBytes = '4 * 1024 * 1024';
+                    props.maxBytes = String(4 * 1024 * 1024);
                     new DualViewDoc(props);
                     MemViewPanelProvider.Provider.showPanel();
                     return Promise.resolve();
@@ -851,7 +851,7 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             column: '16',
             wsFolder: '.',
             startAddress: '0',
-            maxBytes: '4 * 1024 * 1024',
+            maxBytes: String(4 * 1024 * 1024),
             isReadOnly: false,
             clientState: {},
             baseAddressStale: false,
