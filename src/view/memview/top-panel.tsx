@@ -389,7 +389,6 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                     className='popup'
                     id='view-settings'
                     style={{
-                        width: `${bigLabel.length + 20}ch`,
                         // top: this.state.clientY,
                         top: 0,
                         left: this.state.clientX
@@ -468,7 +467,6 @@ export class ViewSettings extends React.Component<IViewSettingsProps, IViewSetti
                                 key={key++}
                                 name='column'
                                 type='text'
-                                style={{ width: '4ch' }}
                                 value={this.column}
                                 onChange={this.onColumnsChangeFunc}
                             ></VSCodeTextField>
