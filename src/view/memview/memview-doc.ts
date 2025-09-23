@@ -455,19 +455,34 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
             finally { }
         }
         const memory = doc.getMemoryRaw();
+        const bytePerWord = doc.getBytesPerCell(doc.format);
+        const getByteOrder = (isBigEndian: boolean, bytePerWord: number): number[] => {
+            return isBigEndian
+                ? Array.from({ length: bytePerWord }, (_, index) => index)
+                : Array.from({ length: bytePerWord }, (_, index) => bytePerWord - index - 1);
+        };
+        const byteOrder = getByteOrder(doc.endian === 'big', bytePerWord);
         let base = memory.baseAddress;
         for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.currentDoc?.PageSize || 512)) {
             const page = memory.getPage(base);
             if (page && page.length) {
+                const columnLength = Number(doc.column) + 1;
                 let addr = base;
                 let line: string[] = [hexFmt64(addr, false)];
-                for (let ix = 0; ix < page.length; ix++) {
-                    if (line.length === 17) {
+                let ix = 0;
+                while (ix < page.length) {
+                    let val = 0n;
+                    for (let iy = 0; iy < bytePerWord; iy++) {
+                        const byteIndex = byteOrder[iy];
+                        val = (val << 8n) | BigInt(page[ix + byteIndex] & 0xff);
+                    }
+                    line.push(val.toString(16).padStart(bytePerWord * 2, '0'));
+                    if (line.length === columnLength) {
                         cb && cb(line.join(' '));
-                        addr += 16n;
+                        addr += BigInt(doc.bytesPerRow);
                         line = [hexFmt64(addr, false)];
                     }
-                    line.push(page[ix].toString(16).padStart(2, '0'));
+                    ix += bytePerWord;
                 }
                 (line.length > 1) && cb && cb(line.join(' '));
             }

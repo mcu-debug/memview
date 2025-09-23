@@ -52,12 +52,12 @@ export class SelContext {
         const prev = this.current ?? 0n;
         this.current = address; // New anchor
         if (!this.range) {
-            this.range = new SelRange(address, address);
+            this.range = new SelRange(address, address + BigInt(doc?.getBytesPerCell(doc.format) || 1) - 1n);
         } else {
             const inRange = SelContext.isSelected(address);
             const min = bigIntMin(inRange ? prev : this.range.start, address);
             const max = bigIntMax(inRange ? prev : this.range.end, address);
-            this.range = new SelRange(min, max);
+            this.range = new SelRange(min, max + BigInt(doc?.getBytesPerCell(doc.format) || 1) - 1n);
         }
         SelContext.eventEmitter.emit('changed', this.range);
     }
@@ -86,27 +86,40 @@ export class SelContext {
                     await DualViewDoc.getCurrentDocByte(addr); // This will refresh if debugger is stopped
                 } catch {}
             };
-            const pageSize = BigInt(DualViewDoc.currentDoc?.PageSize || 512);
-            let addr = (range.start / 16n) * 16n;
-            await refreshPage(addr);
+            const getByteOrder = (isBigEndian: boolean, bytePerWord: number): number[] => {
+                return isBigEndian
+                    ? Array.from({ length: bytePerWord }, (_, index) => index)
+                    : Array.from({ length: bytePerWord }, (_, index) => bytePerWord - index - 1);
+            }
+            const pageSize = BigInt(doc.PageSize || 512);
+            const isBigEndian = doc.endian === 'big';
+            const bytePerWord = doc.getBytesPerCell(doc.format);
+            const byteOrder = getByteOrder(isBigEndian, bytePerWord);
             const lines: string[] = [];
             let done = false;
-            while (!done && addr <= range.end && addr < doc.maxAddress) {
+            let addr = doc.baseAddress + (((range.start - doc.baseAddress) / BigInt(doc.bytesPerRow)) * BigInt(doc.bytesPerRow));
+            await refreshPage(addr);
+            while (!done && (addr + BigInt(bytePerWord) - 1n) <= range.end && (addr + BigInt(bytePerWord) - 1n) < doc.maxAddress) {
                 const row = DualViewDoc.getRowUnsafe(addr);
                 let ix = 0;
                 while (addr < range.start) {
                     addr++;
                     ix++;
                 }
-                const line: string[] = [hexFmt64(addr, false)];
-                while (ix < row.length && addr <= range.end) {
-                    const val = row[ix++].cur;
-                    if (val < 0) {
-                        done = true;
-                        break;
+                const line: string[] = ((range.end - range.start) >= bytePerWord) ? [hexFmt64(addr, false)] : [];
+                while ((ix + bytePerWord - 1) < row.length && (addr + BigInt(bytePerWord) - 1n) <= range.end) {
+                    let val = 0n;
+                    for (const iy of byteOrder) {
+                        const byte = row[ix + iy].cur;
+                        if (byte < 0) {
+                            done = true;
+                            break;
+                        }
+                        val = (val << 8n) | BigInt(byte & 0xff);
                     }
-                    line.push(val.toString(16).padStart(2, '0'));
-                    addr++;
+                    line.push(val.toString(16).padStart(bytePerWord * 2, '0'));
+                    ix += bytePerWord;
+                    addr += BigInt(bytePerWord);
                 }
                 if (line.length > 1) {
                     lines.push(line.join(' '));
