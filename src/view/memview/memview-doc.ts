@@ -415,35 +415,68 @@ export class MemViewPanelProvider implements vscode.WebviewViewProvider, vscode.
         return new Promise<void>((resolve) => {
             const opts: vscode.SaveDialogOptions = {
                 filters: {
-                    'Text files': ['*.txt', '*.dat']
+                    'Text or Binary files': ['*.txt', '*.dat', '*.bin'],
                 },
                 saveLabel: 'Save',
                 title: 'Select text file for writing'
             };
             vscode.window.showSaveDialog(opts).then((uri) => {
                 if (uri) {
+                    const ext = uri.fsPath.toLowerCase().split('.').pop();
+                    const isBinary = ext === 'bin';
                     const stream = fs.createWriteStream(uri.fsPath);
                     stream.on('error', (e) => {
                         vscode.window.showErrorMessage(`Could not open file name "${uri}" for writing: ${e}`);
                         resolve();
                     });
                     stream.on('ready', () => {
-                        this.dumpAll(doc, (line) => {
-                            stream.write(line);
-                            stream.write('\n');
-                        }).then(() => {
-                            stream.end();
-                        }).catch((e) => {
-                            console.error('MemView: dumpAll Failed?!?!', e);
-                        }).finally(() => {
-                            resolve();
-                        });
+                        if (isBinary) {
+                            // Dump raw binary
+                            this.dumpBin(doc, (chunk) => {
+                                stream.write(chunk);
+                            }).then(() => {
+                                stream.end();
+                            }).catch((e) => {
+                                console.error('MemView: dumpBin Failed?!?!', e);
+                            }).finally(() => {
+                                resolve();
+                            });
+                        } else {
+                            // Dump formatted text
+                            this.dumpAll(doc, (line) => {
+                                stream.write(line + '\n');
+                            }).then(() => {
+                                stream.end();
+                            }).catch((e) => {
+                                console.error('MemView: dumpAll Failed?!?!', e);
+                            }).finally(() => {
+                                resolve();
+                            });
+                        }
                     });
                 } else {
                     resolve();
                 }
             });
         });
+    }
+
+    public async dumpBin(doc: DualViewDoc, cb: (chunk: Buffer) => void) {
+        if (doc.sessionStatus === DocDebuggerStatus.Stopped) {
+            try {
+                // Don't care if we cannot refresh. Dump what we got
+                await doc.refreshMemoryIfStale();
+            }
+            finally { }
+        }
+        const memory = doc.getMemoryRaw();
+        let base = memory.baseAddress;
+        for (let pageIx = 0; pageIx < memory.numPages(); pageIx++, base += BigInt(DualViewDoc.currentDoc?.PageSize || 512)) {
+            const page = memory.getPage(base);
+            if (page && page.length) {
+                cb(Buffer.from(page));
+            }
+        }
     }
 
     public async dumpAll(doc: DualViewDoc, cb: (line: string) => void) {
