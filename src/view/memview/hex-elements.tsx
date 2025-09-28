@@ -15,6 +15,7 @@ import { IMemValue, UnknownDocId } from './shared';
 import { hexFmt64, hexFmt64 as _hexFmt64 } from './utils';
 import { SelContext } from './selection';
 
+
 export type OnCellChangeFunc = (address: bigint, val: number) => void;
 export type OnSelChangedFunc = (address: bigint) => void;
 export type CellInfoType = IMemValue | IMemValue16or32or64;
@@ -89,19 +90,27 @@ export class HexCellValue extends React.Component<IHexCell, IHexCellState> {
     };
 
     valueStr = () => {
-        return HexCellValue.formatValue(this.props.bytesPerCell === 1, this.props.cellInfo);
+        return this.formatValue(this.props.cellInfo);
     };
 
-    public static formatValue(isByte: boolean, cellInfo: CellInfoType): string {
+    formatValue(cellInfo: CellInfoType): string {
+        const isByte = this.props.bytesPerCell === 1;
+        
         if (isByte) {
-            return cellInfo.cur >= 0 ? hexValuesLookup[((cellInfo as IMemValue).cur >>> 0) & 0xff] : '~~';
+            // Single byte formatting - use existing logic
+            const byteInfo = cellInfo as IMemValue;
+            return byteInfo.cur >= 0 ? hexValuesLookup[((byteInfo.cur >>> 0) & 0xff)] : '~~';
         } else {
+            // Multi-byte formatting
             const info = cellInfo as IMemValue16or32or64;
+            if (info.invalid) {
+                return '~'.padStart(HexCellValue.maxChars, '~');
+            }
+            
+            // Convert BigInt to hex string with proper padding
             const value = info.cur;
-            const str = info.invalid
-                ? '~'.padStart(this.maxChars, '~')
-                : value.toString(16).padStart(this.maxChars, '0');
-            return str;
+            const hexStr = value.toString(16).toLowerCase().padStart(HexCellValue.maxChars, '0');
+            return hexStr;
         }
     }
 
@@ -407,35 +416,46 @@ export class HexDataRow extends React.Component<IHexDataRow, IHexDataRowState> {
     private convertToWords(bytes: IMemValue[]): IMemValue16or32or64[] {
         const ret: IMemValue16or32or64[] = [];
         if (HexDataRow.bytePerWord === 1) {
-            return ret;
+            return ret;  // No conversion needed for single bytes
         }
-        const len = HexDataRow.bytePerWord;
+        
+        const len = HexDataRow.bytePerWord;  // 2, 4, or 8
+        
+        // Process each multi-byte group
         for (let start = 0; start < this.bytesInRow; start += len) {
-            let curV = 0n;
-            let origV = 0n;
+            let curV = 0n;   // Build current value
+            let origV = 0n;  // Build original value
             let invalid = false;
-            let changed: boolean | undefined = false;
-            let stale: boolean | undefined = false;
+            let changed = false;
+            let stale = false;
+            
             try {
+                // Combine bytes according to byte order (endianness)
                 for (const ix of HexDataRow.byteOrder) {
                     const byte = bytes[start + ix];
                     if (byte.cur < 0) {
                         invalid = true;
                         break;
                     }
-                    changed = changed || byte.changed;
-                    stale = stale || byte.stale;
+                    changed = changed || (byte.changed || false);
+                    stale = stale || (byte.stale || false);
+                    
+                    // Shift and combine bytes
+                    // For 2-byte: [0x12, 0x34] → 0x1234n
+                    // For 4-byte: [0x12, 0x34, 0x56, 0x78] → 0x12345678n
                     curV = (curV << 8n) | BigInt(byte.cur & 0xff);
                     origV = (origV << 8n) | BigInt(byte.orig & 0xff);
                 }
             } catch (e) {
                 console.log(e);
             }
+            
+            // Store the multi-byte value
             ret.push({
-                cur: curV,
+                cur: curV,     // BigInt value like 0x1234n or 0x12345678n
                 orig: origV,
                 changed: !!changed,
-                stale: !!changed,
+                stale: !!stale,
                 invalid: invalid
             });
         }
