@@ -1,3 +1,4 @@
+import { RowFormatType } from './shared';
 
 export class Timekeeper {
     private start = Date.now();
@@ -28,7 +29,7 @@ export function bigIntMax(a: bigint, b: bigint) {
 }
 
 // Format value based on type and endianness
-export function formatValueWithType(format: '1-byte' | '2-byte' | '4-byte' | '8-byte', bytes: number[], endian: 'little' | 'big'): string {
+export function formatValueWithType(format: RowFormatType, bytes: number[], endian: 'little' | 'big'): string {
     if (bytes.length === 0) {
         return '??';
     }
@@ -58,7 +59,7 @@ export function formatValueWithType(format: '1-byte' | '2-byte' | '4-byte' | '8-
     return hexStr.toLowerCase();
 }
 
-function getBytesPerFormat(format: '1-byte' | '2-byte' | '4-byte' | '8-byte'): number {
+function getBytesPerFormat(format: RowFormatType): number {
     switch (format) {
         case '1-byte': return 1;
         case '2-byte': return 2;
