@@ -1,9 +1,8 @@
-
-
 /node_modules/
 /build/
 /dist/
-
+out/
+.vscode-test/
 .DS_Store
 coverage
 *.log
