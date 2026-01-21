@@ -18,9 +18,11 @@ let trackerApiClientInfo: IDebuggerSubscription;
 
 export const TrackedDebuggers = [
     'cortex-debug',
-    'cppdbg',       // Microsoft debugger
-    'cspy',         // IAR debugger
-    'mplab-core-da' // MPLAB debugger
+    'cppdbg', // Microsoft debugger
+    'cspy', // IAR debugger
+    'mplab-core-da', // MPLAB debugger
+    'stlinkgdbtarget', // STMicroelectronics ST-Link debugger
+    'jlinkgdbtarget' // STMicroelectronics J-Link debugger
 ];
 
 export interface ITrackedDebugSession {
