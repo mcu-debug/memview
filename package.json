@@ -35,6 +35,8 @@
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
         "onDebugResolve:cspy",
+        "onDebugResolve:stlinkgdbtarget",
+        "onDebugResolve:jlinkgdbtarget",
         "onCommand:cu-debug.memory-view.uriTest",
         "onWebviewPanel:memory-view.memoryView",
         "onUri"
