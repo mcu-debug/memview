@@ -3,7 +3,7 @@
     "displayName": "MemoryView",
     "preview": true,
     "description": "Provide memory views for debuggers",
-    "version": "0.0.28",
+    "version": "0.0.29",
     "publisher": "mcu-debug",
     "repository": {
         "type": "git",
@@ -35,7 +35,9 @@
         "onDebugResolve:cortex-debug",
         "onDebugResolve:cppdbg",
         "onDebugResolve:cspy",
-        "onCommand:cu-debug.memory-view.uriTest",
+        "onDebugResolve:gdb",
+        "onDebugResolve:mplab-core-da",
+        "onDebugResolve:platformio-debug",
         "onWebviewPanel:memory-view.memoryView",
         "onUri"
     ],

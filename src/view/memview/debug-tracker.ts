@@ -18,9 +18,12 @@ let trackerApiClientInfo: IDebuggerSubscription;
 
 export const TrackedDebuggers = [
     'cortex-debug',
-    'cppdbg',       // Microsoft debugger
-    'cspy',         // IAR debugger
-    'mplab-core-da' // MPLAB debugger
+    'mcu-debug',      // MCU Debug extension
+    'cppdbg',          // Microsoft debugger
+    'cspy',            // IAR debugger
+    'gdb',             // GDB debugger
+    'mplab-core-da',   // MPLAB debugger
+    'platformio-debug' // PlatformIO debugger
 ];
 
 export interface ITrackedDebugSession {
@@ -81,10 +84,11 @@ export class DebuggerTrackerLocal {
         const session = DebuggerTrackerLocal.allSessionsById[id];
         if (!session) {
             return 'No session with the session id ' + id +
-                '. Probably a bug or a debugger type that we are not tracking';
+                '. Probably a bug or a debugger type that we are not tracking' +
+                ' (check memory-view.trackDebuggers setting).';
         }
         if (!session.canReadMemory) {
-            return 'The current debugger does provide a memory read API';
+            return 'The current debugger does not provide a memory read API';
         }
         return true;
     }
