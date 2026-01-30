@@ -8,6 +8,7 @@ Please note that we are still in Preview mode. For those using the API, this can
 -   ---Selection, copy &--- paste
 -   Apply settings to workspace/user/all-views beyond the current view
 -   Scrollbars: We are not happy about the scrollbars. While scrolling works with the track-pad or mouse-wheel, the scrollbars are not always visible. We hope to have proper scrollbars in the future and soon. The infinite scrolling makes scrollbars a bit tricky. Any help is appreciated if you are a HTML/CSS/React expert.
+-   [#54](https://github.com/mcu-debug/memview/pull/54): Support for STMicroelectronics adapters
 
 ## 0.0.27 - Sep 21, 2025
 

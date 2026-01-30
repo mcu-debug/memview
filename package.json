@@ -33,8 +33,11 @@
     ],
     "activationEvents": [
         "onDebugResolve:cortex-debug",
+        "onDebugResolve:mcu-debug",
         "onDebugResolve:cppdbg",
         "onDebugResolve:cspy",
+        "onDebugResolve:stlinkgdbtarget",
+        "onDebugResolve:jlinkgdbtarget",
         "onDebugResolve:gdb",
         "onDebugResolve:mplab-core-da",
         "onDebugResolve:platformio-debug",
